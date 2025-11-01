@@ -617,7 +617,8 @@ class RecentFixesTests(TestCase):
             title='Template',
             owner=self.user,
             is_periodic=True,
-            start_date=date.today()
+            start_date=date.today(),
+            periodicity_type='daily'
         )
         template_subtask = Task.objects.create(
             title='Template Subtask',
@@ -696,7 +697,8 @@ class RecentFixesTests(TestCase):
             title='Template',
             owner=self.user,
             is_periodic=True,
-            start_date=date.today()
+            start_date=date.today(),
+            periodicity_type='daily'
         )
         template_subtask = Task.objects.create(
             title='Common Subtask',
