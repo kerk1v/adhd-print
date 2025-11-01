@@ -1,0 +1,48 @@
+<div class="task-content-wrapper" id="task-{{ task.id }}">
+    <div class="d-flex justify-content-between align-items-start">
+        <div class="flex-grow-1 {% if task.done %}task-done{% endif %}">
+            <div class="d-flex align-items-center mb-1">
+                <input type="checkbox" class="form-check-input me-2 task-checkbox" 
+                       {% if task.done %}checked{% endif %}
+                       onclick="event.stopPropagation(); toggleTaskDone({{ task.id }})">
+                <strong class="task-title" {% if task.is_selected %}style="background-color: #e3f2fd; padding: 2px 6px; border-radius: 4px; border: 1px solid #2196f3;"{% endif %}>{{ task.title }}</strong>
+                <span class="badge bg-{% if task.urgency == 'low' %}success{% elif task.urgency == 'normal' %}primary{% elif task.urgency == 'urgent' %}warning{% else %}danger{% endif %} ms-2 badge-sm">
+                    {{ task.get_urgency_display }}
+                </span>
+            </div>
+            
+            {% if task.description %}
+                <p class="text-muted small mb-1">{{ task.description|truncatechars:60 }}</p>
+            {% endif %}
+            
+            <div class="text-muted small">
+                <i class="fas fa-clock"></i> {{ task.created_at|date:"M d H:i" }}
+                {% if task.due_date %}
+                    <span class="ms-2 {% if task.due_date < now and not task.done %}text-danger{% endif %}">
+                        <i class="fas fa-calendar-alt"></i> {{ task.due_date|date:"M d H:i" }}
+                    </span>
+                {% endif %}
+                {% if task.subtasks.count > 0 %}
+                    <span class="ms-2">
+                        <i class="fas fa-sitemap"></i> {{ task.subtasks.count }}
+                    </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="btn-group btn-group-sm ms-2" onclick="event.stopPropagation(); event.preventDefault();">
+            <button type="button" class="btn btn-outline-primary btn-sm" title="Edit"
+                    data-bs-toggle="modal" data-bs-target="#editModal" data-task-id="{{ task.id }}">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button type="button" class="btn btn-outline-success btn-sm" title="Print"
+                    onclick="showPrintConfirmModal({{ task.id }})">
+                <i class="fas fa-print"></i>
+            </button>
+            <button type="button" class="btn btn-outline-danger btn-sm" title="Delete" 
+                    data-bs-toggle="modal" data-bs-target="#deleteModal" data-task-id="{{ task.id }}">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,29 @@
+# ADHD Print Task Management System - Requirements
+# Core Django framework
+Django==5.2.7
+
+# Image processing for thermal printer output
+Pillow==12.0.0
+
+# Background job scheduling
+APScheduler==3.10.4
+
+# ASGI server for production deployment
+uvicorn==0.24.0
+
+# ESC/POS thermal printer support
+python-escpos==3.1
+
+# Barcode generation (optional, for future features)
+python-barcode==0.16.1
+qrcode==8.2
+
+# Testing and development
+coverage==7.11.0
+
+# Additional dependencies (auto-installed with above packages)
+# asgiref>=3.10.0  # Django ASGI support
+# h11>=0.16.0      # HTTP/1.1 client/server for uvicorn
+# Pillow>=10.0.0   # Image processing
+# pytz>=2025.0     # Timezone support
+# sqlparse>=0.5.0  # SQL parsing for Django

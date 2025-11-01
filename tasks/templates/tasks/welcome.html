@@ -1,0 +1,48 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Welcome - Task Management{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="jumbotron bg-light p-5 rounded">
+            <h1 class="display-4">
+                <i class="fas fa-tasks text-primary"></i> 
+                Task Management System
+            </h1>
+            <p class="lead">
+                Organize your tasks with unlimited subtasks, priority levels, and due dates.
+            </p>
+            <hr class="my-4">
+            <p>
+                Features include:
+            </p>
+            <div class="row">
+                <div class="col-md-6">
+                    <ul class="list-unstyled text-left">
+                        <li><i class="fas fa-check text-success"></i> 3-level nested subtasks</li>
+                        <li><i class="fas fa-check text-success"></i> Priority levels (Low, Normal, Urgent, Critical)</li>
+                        <li><i class="fas fa-check text-success"></i> Due dates and times</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <ul class="list-unstyled text-left">
+                        <li><i class="fas fa-check text-success"></i> Task ownership</li>
+                        <li><i class="fas fa-check text-success"></i> Automatic creation timestamps</li>
+                        <li><i class="fas fa-check text-success"></i> Smart deletion protection</li>
+                    </ul>
+                </div>
+            </div>
+            {% if not user.is_authenticated %}
+                <a class="btn btn-primary btn-lg" href="/admin/login/" role="button">
+                    <i class="fas fa-sign-in-alt"></i> Login to Get Started
+                </a>
+            {% else %}
+                <a class="btn btn-primary btn-lg" href="{% url 'task_list' %}" role="button">
+                    <i class="fas fa-list"></i> View My Tasks
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

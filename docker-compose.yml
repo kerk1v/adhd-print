@@ -1,0 +1,103 @@
+# ADHD Print Task Management System - Docker Compose
+# Development and production configurations
+
+version: '3.8'
+
+services:
+  # Main application service
+  adhd-print-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: adhd-print-app
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for development
+      - .:/app
+      # Persistent data storage
+      - adhd_data:/app/data
+      # Static files
+      - adhd_static:/app/staticfiles
+      # Logs
+      - adhd_logs:/app/logs
+    environment:
+      - DJANGO_DEBUG=True
+      - DJANGO_SETTINGS_MODULE=adhd_print_project.settings
+      - PYTHONPATH=/app
+    command: python manage.py runserver 0.0.0.0:8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/tasks/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Production service (commented out for development)
+  # adhd-print-prod:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.prod
+  #   container_name: adhd-print-prod
+  #   ports:
+  #     - "80:8000"
+  #   volumes:
+  #     - adhd_data:/app/data
+  #     - adhd_static:/app/staticfiles
+  #     - adhd_logs:/app/logs
+  #   environment:
+  #     - DJANGO_DEBUG=False
+  #     - DJANGO_SETTINGS_MODULE=adhd_print_project.settings
+  #     - ASGI_WORKERS=4
+  #     - ASGI_HOST=0.0.0.0
+  #   restart: unless-stopped
+
+  # Optional: PostgreSQL database (for production scaling)
+  # postgres:
+  #   image: postgres:15-alpine
+  #   container_name: adhd-print-db
+  #   environment:
+  #     POSTGRES_DB: adhd_print
+  #     POSTGRES_USER: adhd_print
+  #     POSTGRES_PASSWORD: secure_password_here
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+
+  # Optional: Redis cache (for production scaling)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: adhd-print-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   restart: unless-stopped
+
+volumes:
+  # Persistent data storage
+  adhd_data:
+    driver: local
+  
+  # Static files
+  adhd_static:
+    driver: local
+  
+  # Application logs
+  adhd_logs:
+    driver: local
+  
+  # Database data (if using PostgreSQL)
+  # postgres_data:
+  #   driver: local
+  
+  # Redis data (if using Redis)
+  # redis_data:
+  #   driver: local
+
+networks:
+  default:
+    name: adhd-print-network

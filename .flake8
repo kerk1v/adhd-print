@@ -1,0 +1,53 @@
+[flake8]
+# PEP 8 Configuration for ADHD Print Project
+
+# Maximum line length
+max-line-length = 88
+
+# Exclude directories and files
+exclude = 
+    venv,
+    migrations,
+    __pycache__,
+    static,
+    staticfiles,
+    .git,
+    .tox,
+    dist,
+    build,
+    *.egg-info
+
+# Error codes to ignore (use sparingly)
+ignore = 
+    # Line break before binary operator (W503 vs W504 preference)
+    W503,
+    # Line too long (handled by max-line-length)
+    # E501
+
+# Maximum complexity (cyclomatic complexity)
+max-complexity = 10
+
+# Statistics
+statistics = True
+count = True
+
+# Per-file ignores (if needed)
+per-file-ignores =
+    # Django settings files can have longer lines for configuration
+    */settings.py:E501
+    # Test files can have some flexibility
+    */test_*.py:F841
+    # Init files often just import
+    __init__.py:F401
+
+# Select specific error codes to check (optional - by default all are checked)
+# select = E,W,F,C
+
+# Show source code for each error
+show-source = True
+
+# Print filename for each error  
+filename = *.py
+
+# Format for error messages
+format = %(path)s:%(row)d:%(col)d: %(code)s %(text)s

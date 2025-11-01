@@ -1,0 +1,162 @@
+<form id="{% if action == 'Edit' %}editModalForm{% else %}taskModalForm{% endif %}" method="post">
+    {% csrf_token %}
+    {% if action != 'Edit' %}
+        <input type="hidden" name="parent_id" value="{{ parent_id|default:'' }}">
+    {% endif %}
+    
+    <div class="mb-3">
+        <label for="{{ form.title.id_for_label }}" class="form-label">
+            Title <span class="text-danger">*</span>
+        </label>
+        {{ form.title }}
+        <div class="invalid-feedback" id="title-error"></div>
+    </div>
+    
+    <div class="mb-3">
+        <label for="{{ form.description.id_for_label }}" class="form-label">
+            Description
+        </label>
+        {{ form.description }}
+        <div class="invalid-feedback" id="description-error"></div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="{{ form.urgency.id_for_label }}" class="form-label">
+                    Urgency <span class="text-danger">*</span>
+                </label>
+                {{ form.urgency }}
+                <div class="invalid-feedback" id="urgency-error"></div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="{{ form.due_date.id_for_label }}" class="form-label">
+                    Due Date
+                </label>
+                {{ form.due_date }}
+                <div class="invalid-feedback" id="due_date-error"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="mb-3">
+        <div class="form-check">
+            {{ form.done }}
+            <label for="{{ form.done.id_for_label }}" class="form-check-label">
+                Mark as completed
+            </label>
+        </div>
+        <div class="invalid-feedback" id="done-error"></div>
+    </div>
+    
+    <!-- Periodic Task Section -->
+    {% comment %}
+    Show periodic options when:
+    1. Creating a new task without parent (not parent_task)
+    2. Editing an existing task that doesn't have a parent (task and not task.parent)
+    Don't show when creating a subtask or editing a subtask
+    {% endcomment %}
+    {% if not parent_task and not task.parent %}
+    <div class="card mt-3">
+        <div class="card-header py-2">
+            <h6 class="mb-0">
+                <i class="fas fa-repeat me-2"></i>
+                Repeating Task Options
+            </h6>
+        </div>
+        <div class="card-body py-2">
+            <div class="mb-3">
+                <div class="form-check">
+                    {{ form.is_periodic }}
+                    <label for="{{ form.is_periodic.id_for_label }}" class="form-check-label">
+                        Make this a repeating task
+                    </label>
+                </div>
+                <div class="invalid-feedback" id="is_periodic-error"></div>
+            </div>
+            
+            <div id="modal-periodic-fields" style="display: none;">
+                <div class="row">
+                    <div class="col-6">
+                        <div class="mb-3">
+                            <label for="{{ form.start_date.id_for_label }}" class="form-label">
+                                Start Date <span class="text-danger">*</span>
+                            </label>
+                            {{ form.start_date }}
+                            <div class="invalid-feedback" id="start_date-error"></div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="mb-3">
+                            <label for="{{ form.end_date.id_for_label }}" class="form-label">
+                                End Date
+                            </label>
+                            {{ form.end_date }}
+                            <div class="invalid-feedback" id="end_date-error"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.periodicity_type.id_for_label }}" class="form-label">
+                        Repeat Every <span class="text-danger">*</span>
+                    </label>
+                    {{ form.periodicity_type }}
+                    <div class="invalid-feedback" id="periodicity_type-error"></div>
+                </div>
+                
+                <div id="modal-weekday-selection" style="display: none;">
+                    <div class="mb-3">
+                        <label class="form-label">
+                            Days of the Week <span class="text-danger">*</span>
+                        </label>
+                        <div class="row">
+                            {% for choice in form.weekdays %}
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        {{ choice.tag }}
+                                        <label for="{{ choice.id_for_label }}" class="form-check-label small">
+                                            {{ choice.choice_label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="invalid-feedback" id="weekdays-error"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    {% if parent_task %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i>
+            Creating subtask under: 
+            {% if hierarchy_path %}
+                <div class="mt-1">
+                    {% for task in hierarchy_path %}
+                        <strong>{{ task.title }}</strong>
+                        {% if not forloop.last %}
+                            <i class="fas fa-angle-right mx-1 text-muted"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            {% else %}
+                <strong>{{ parent_task.title }}</strong>
+            {% endif %}
+        </div>
+    {% endif %}
+</form>
+
+{% load static %}
+<script src="{% static 'tasks/js/task-modal-form.js' %}"></script>
+<script>
+// Set field ID variables for external JavaScript
+const modalIsPeriodicFieldId = "{{ form.is_periodic.id_for_label }}";
+const modalDueDateFieldId = "{{ form.due_date.id_for_label }}";
+const modalPeriodicityTypeFieldId = "{{ form.periodicity_type.id_for_label }}";
+</script>

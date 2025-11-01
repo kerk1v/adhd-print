@@ -1,0 +1,28 @@
+<!-- Print Confirmation Modal -->
+<div class="modal fade" id="printConfirmModal" tabindex="-1" aria-labelledby="printConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="printConfirmModalLabel">
+                    <i class="fas fa-print"></i> Print Task
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="mb-3">
+                    <i class="fas fa-print fa-3x text-primary mb-3"></i>
+                </div>
+                <h6>Print this task?</h6>
+                <p class="text-muted mb-0">The task will be printed to your configured ESC/P printer.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> No
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmPrintBtn">
+                    <i class="fas fa-print"></i> Yes, Print
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

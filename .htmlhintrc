@@ -1,0 +1,20 @@
+{
+  "doctype-first": false,
+  "spec-char-escape": false,
+  "tag-pair": false,
+  "attr-lowercase": true,
+  "attr-no-duplication": true,
+  "attr-unsafe-chars": true,
+  "attr-value-double-quotes": true,
+  "attr-value-not-empty": false,
+  "id-unique": true,
+  "src-not-empty": true,
+  "title-require": false,
+  "alt-require": true,
+  "inline-style-disabled": false,
+  "inline-script-disabled": false,
+  "space-tab-mixed-disabled": true,
+  "id-class-value": false,
+  "href-abs-or-rel": false,
+  "attr-value-single-quotes": false
+}

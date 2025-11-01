@@ -1,0 +1,41 @@
+#!/sbin/openrc-run
+
+name="adhd-print"
+description="ADHD Print Task Management System"
+
+command="/opt/adhd-print/venv/bin/python"
+command_args="manage.py runserver 0.0.0.0:8000"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+command_user="adhd"
+directory="/opt/adhd-print"
+
+depend() {
+    need net
+    after nginx supervisor
+}
+
+start_pre() {
+    checkpath --directory --owner adhd:adhd --mode 0755 /var/log/adhd-print
+}
+
+start() {
+    ebegin "Starting ${name}"
+    start-stop-daemon --start \
+        --user ${command_user} \
+        --pidfile ${pidfile} \
+        --chdir ${directory} \
+        --background \
+        --make-pidfile \
+        --env DJANGO_SETTINGS_MODULE=adhd_print_project.settings \
+        --exec ${command} -- ${command_args}
+    eend $?
+}
+
+stop() {
+    ebegin "Stopping ${name}"
+    start-stop-daemon --stop \
+        --pidfile ${pidfile} \
+        --exec ${command}
+    eend $?
+}
