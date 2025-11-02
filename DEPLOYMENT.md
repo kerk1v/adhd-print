@@ -565,6 +565,47 @@ Before going live, verify:
 - **Testing**: See TESTING.md for comprehensive testing guide
 - **Development**: See README.md for development setup
 
+---
+
+## 🗃️ Database Migration Structure
+
+### Single Initial Migration
+
+This project uses a **squashed migration approach** for cleaner deployments:
+
+- **Current State**: Only `tasks/migrations/0001_initial.py` exists
+- **Purpose**: Reflects complete current database schema in one migration
+- **Benefits**: 
+  - Faster Docker builds
+  - Cleaner deployment process
+  - No migration dependency chains
+
+### Migration History
+
+The project previously had migrations 0001-0012, but these have been **squashed into a single initial migration** that represents the final database state.
+
+If you encounter migration issues during deployment:
+
+```bash
+# Check migration status
+python manage.py showmigrations
+
+# Expected output for tasks app:
+# tasks
+#  [X] 0001_initial
+
+# If you see missing migrations, fake-apply the initial:
+python manage.py migrate --fake-initial
+```
+
+### Docker Deployment Notes
+
+- **✅ Correct**: Migrations run at **container startup** via `start_asgi.sh`
+- **❌ Incorrect**: Running migrations during **image build** time
+- **Reason**: Database may not be available during build process
+
+---
+
 ### Common Workflows
 1. **Create Task**: Web interface → Add task with hierarchy
 2. **Print Prompt**: After saving → Modal asks "Print this task?"
