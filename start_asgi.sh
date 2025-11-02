@@ -61,6 +61,18 @@ echo "  BACKGROUND_JOBS_ENABLED: ${BACKGROUND_JOBS_ENABLED:-default}"
 echo "  MAINTENANCE_SCHEDULE_HOUR: ${MAINTENANCE_SCHEDULE_HOUR:-default}"
 echo "  MAINTENANCE_SCHEDULE_MINUTE: ${MAINTENANCE_SCHEDULE_MINUTE:-default}"
 echo ""
+echo "Font files verification:"
+if [ -f "/app/static/fonts/Roboto-Regular.ttf" ]; then
+    echo "  ✅ Roboto-Regular.ttf found"
+else
+    echo "  ❌ Roboto-Regular.ttf missing"
+fi
+if [ -f "/app/static/fonts/Roboto-Bold.ttf" ]; then
+    echo "  ✅ Roboto-Bold.ttf found"
+else
+    echo "  ❌ Roboto-Bold.ttf missing"
+fi
+echo ""
 
 # Check for background jobs
 echo "Starting background jobs system..."

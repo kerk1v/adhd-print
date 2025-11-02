@@ -89,7 +89,7 @@ data/
 
 # Static files (generated in container)
 staticfiles/
-static/
+# Note: Keep static/ directory as it contains fonts and other assets
 
 # Development scripts
 run_tests.sh

@@ -118,11 +118,40 @@ def create_task_image(task):
                 parents_text_font = ImageFont.truetype(
                     "/System/Library/Fonts/Arial.ttf", 30)
             except BaseException:
-                # Final fallback to default font
-                font = ImageFont.load_default()
-                title_font = font
-                parents_label_font = font
-                parents_text_font = font
+                try:
+                    # Linux font fallbacks (for Docker containers)
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 26)
+                    title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 52)
+
+                    # Try to get bold DejaVu
+                    try:
+                        parents_label_font = ImageFont.truetype(
+                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+                    except BaseException:
+                        parents_label_font = ImageFont.truetype(
+                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+                    parents_text_font = ImageFont.truetype(
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+                except BaseException:
+                    try:
+                        # Try Liberation fonts (also common in Linux)
+                        font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 26)
+                        title_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 52)
+
+                        try:
+                            parents_label_font = ImageFont.truetype(
+                                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 24)
+                        except BaseException:
+                            parents_label_font = ImageFont.truetype(
+                                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 24)
+                        parents_text_font = ImageFont.truetype(
+                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 30)
+                    except BaseException:
+                        # Final fallback to default font
+                        font = ImageFont.load_default()
+                        title_font = font
+                        parents_label_font = font
+                        parents_text_font = font
 
     # Layout with larger spacing for 26pt font
     current_y = 30  # More top padding for larger content

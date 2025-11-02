@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     fonts-dejavu-core \
     fonts-liberation \
+    fonts-roboto \
     fontconfig \
     git \
     curl \
@@ -40,6 +41,9 @@ RUN pip install --upgrade pip && \
 
 # Copy application code
 COPY --chown=adhd_print:adhd_print . .
+
+# Ensure font files are present (critical for print quality)
+RUN ls -la /app/static/fonts/ || echo "Font directory not found"
 
 # Create necessary directories with proper permissions
 RUN mkdir -p /app/data /app/static /app/staticfiles /app/logs && \
