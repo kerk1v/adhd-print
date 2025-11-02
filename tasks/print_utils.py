@@ -264,7 +264,9 @@ def create_task_image(task):
         draw.text((label_x, current_y), parents_label, fill=0, font=parents_label_font)
 
         # Draw underline for "Parents" label
-        underline_y = current_y + bbox[3] - bbox[1] + 2  # Just below the text
+        # Use font size to calculate proper underline position
+        font_size = 24  # parents_label_font size
+        underline_y = current_y + font_size + 2  # Position below the text baseline
         underline_start_x = label_x
         underline_end_x = label_x + label_width
         draw.line([(underline_start_x, underline_y),
