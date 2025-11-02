@@ -276,7 +276,7 @@ This comprehensive user guide will help you effectively use the ADHD Print Task 
 - **Configurable Database**: Flexible database location and settings via environment variables
 - **Background Jobs**: Integrated automated maintenance system (no cron setup required)
 - **ASGI Support**: Modern asynchronous deployment for better performance
-- **Multiple Deployment Options**: Docker, LXC containers, traditional servers, and ASGI
+- **Multiple Deployment Options**: Docker, traditional servers, and ASGI
 
 ---
 
@@ -363,8 +363,7 @@ python manage.py runserver
 - **🐳 [Docker Deployment](DEPLOYMENT.md#docker-deployment)** - Complete containerization with nginx, PostgreSQL, Redis
 - **📦 [GitHub Container Registry](#-github-container-registry)** - Pre-built images for quick deployment
 - **⚡ [ASGI Production](DEPLOYMENT.md#asgi-production-deployment)** - Modern async deployment with uvicorn/gunicorn  
-- **📦 [Proxmox LXC](DEPLOYMENT.md#proxmox-lxc-container-deployment)** - Lightweight Alpine Linux containers with autostart
-- **🖥️ [Traditional Server](DEPLOYMENT.md#traditional-server-deployment)** - Standard server deployment with nginx/supervisor
+- **️ [Traditional Server](DEPLOYMENT.md#traditional-server-deployment)** - Standard server deployment with nginx/supervisor
 
 ### 🚀 GitHub Container Registry
 
@@ -415,7 +414,7 @@ The application includes an integrated background job system that automatically 
 ## 📚 Documentation
 
 ### Quick Links
-- **[🚀 Complete Deployment Guide](DEPLOYMENT.md)** - All deployment options (Docker, ASGI, LXC, traditional)
+- **[🚀 Complete Deployment Guide](DEPLOYMENT.md)** - All deployment options (Docker, ASGI, traditional)
 - **[🎯 Features Guide](FEATURES.md)** - Complete feature overview including periodic tasks and background jobs  
 - **[🖨️ Local Printing Implementation](LOCAL_PRINT.md)** - Complete local printing documentation and technical details
 - **[🧪 Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing documentation and recent fixes
@@ -443,7 +442,6 @@ adhd-print/
 ├── static/                   # Static assets (fonts, icons)
 ├── scripts/                  # 📁 Utility scripts
 ├── deployment/               # 📁 Deployment configurations
-│   └── lxc/                 # Proxmox LXC container setup
 └── venv/                    # Virtual environment
 ```
 

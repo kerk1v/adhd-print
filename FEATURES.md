@@ -347,8 +347,7 @@ MAINTENANCE_SCHEDULE_MINUTE=0         # Maintenance minute
 
 #### ✅ Container Support
 - **Docker Integration**: Complete Docker deployment support
-- **LXC Templates**: Proxmox LXC container templates
-- **Alpine Linux**: Lightweight container base (3.1MB vs 401MB Ubuntu)
+- **Alpine Linux**: Lightweight container base for efficient deployment
 - **Autostart Configuration**: Automatic startup on system boot
 
 ---
@@ -540,7 +539,7 @@ The ADHD Print Task Management System currently provides:
 5. ✅ **Modern Architecture** - ASGI deployment with container support
 6. ✅ **Security & Authentication** - Complete user management and security
 7. ✅ **Quality Assurance** - Comprehensive test suite with 100% pass rate
-8. ✅ **Flexible Deployment** - Multiple deployment options (Docker, LXC, traditional)
+8. ✅ **Flexible Deployment** - Multiple deployment options (Docker, ASGI, traditional)
 9. ✅ **Professional UI** - Modern, responsive web interface
 10. ✅ **Production Ready** - Complete logging, monitoring, and maintenance
 

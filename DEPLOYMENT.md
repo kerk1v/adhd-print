@@ -10,11 +10,10 @@ This Django-based task management system with thermal printing capabilities is f
 2. [Environment Configuration](#environment-configuration)
 3. [Docker Deployment](#docker-deployment)
 4. [ASGI Production Deployment](#asgi-production-deployment)
-5. [Proxmox LXC Container Deployment](#proxmox-lxc-container-deployment)
-6. [Traditional Server Deployment](#traditional-server-deployment)
-7. [Printer Configuration](#printer-configuration)
-8. [Monitoring & Maintenance](#monitoring--maintenance)
-9. [Troubleshooting](#troubleshooting)
+5. [Traditional Server Deployment](#traditional-server-deployment)
+6. [Printer Configuration](#printer-configuration)
+7. [Monitoring & Maintenance](#monitoring--maintenance)
+8. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -239,59 +238,7 @@ server {
 
 ---
 
-## 📦 Proxmox LXC Container Deployment
-
-### Quick LXC Deployment
-
-1. **Build Alpine Linux template:**
-   ```bash
-   sudo ./deployment/lxc/build-template.sh
-   ```
-
-2. **Upload to Proxmox:**
-   ```bash
-   scp adhd-print-taskmanager-1.0.tar.gz root@proxmox-host:/var/lib/vz/template/cache/
-   ```
-
-3. **Create container:**
-   ```bash
-   pct create 100 /var/lib/vz/template/cache/adhd-print-taskmanager-1.0.tar.gz \
-     --hostname adhd-print \
-     --memory 1024 \
-     --rootfs local-lvm:4 \
-     --net0 name=eth0,bridge=vmbr0,ip=dhcp \
-     --onboot 1 \
-     --start 1
-   ```
-
-### LXC Container Features
-- **Alpine Linux 3.18**: Lightweight base (3.1MB vs 401MB Ubuntu)
-- **Complete Setup**: Automatic installation and configuration
-- **SSH Access**: root/alpine123, adhd/adhd
-- **Autostart**: Configured for automatic startup
-- **Resource Efficient**: 1GB RAM, 4GB storage
-
-### LXC Management
-```bash
-# Container controls
-pct start 100
-pct stop 100
-pct enter 100
-
-# Application management (inside container)
-systemctl status adhd-print nginx supervisor
-tail -f /var/log/adhd-print/django.log
-```
-
-### Container Access
-- **Web Interface**: `http://[container-ip]/`
-- **Admin Panel**: `http://[container-ip]/admin/`
-- **Default Credentials**: admin/admin123
-- **SSH Access**: `ssh root@[container-ip]` or `ssh adhd@[container-ip]`
-
----
-
-## 🖥️ Traditional Server Deployment
+## ️ Traditional Server Deployment
 
 ### Ubuntu/Debian Server
 
@@ -439,9 +386,6 @@ tar czf adhd-print-backup-$(date +%Y%m%d).tar.gz /opt/adhd-print
 
 # Docker deployment
 ./docker_setup.sh backup
-
-# LXC deployment
-vzdump 100 --mode snapshot --compress gzip
 ```
 
 ---
