@@ -5,7 +5,7 @@ Generates 85x85 pixel Material Design-inspired urgency icons for thermal printin
 Icons are created as 1-bit PNG files optimized for ESC/POS thermal printers.
 
 Icons generated:
-- critical.png: Report flag style for critical urgency
+- critical.png: Hexagonal stop sign with exclamation for critical urgency
 - urgent.png: Warning triangle for urgent tasks
 - normal.png: Info circle for normal priority
 - low.png: Simple circle for low priority
@@ -29,16 +29,49 @@ def create_material_design_icons():
     icons_dir = os.path.join(settings.BASE_DIR, 'static', 'icons')
     os.makedirs(icons_dir, exist_ok=True)
 
-    # Critical - Material Design "report" icon style (flag with exclamation)
+    # Critical - Hexagonal stop sign with exclamation (like traffic stop sign)
     critical_img = Image.new('1', (icon_size, icon_size), 1)  # White background
     draw = ImageDraw.Draw(critical_img)
 
-    # Flag pole (adjusted for 85x85)
-    draw.rectangle([18, 10, 25, 75], fill=0)
-    # Flag body (adjusted for 85x85)
-    draw.polygon([(25, 10), (67, 10), (74, 21), (67, 32), (25, 32)], fill=0)
-    # Exclamation in flag (adjusted for 85x85)
-    draw.rectangle([39, 16, 42, 26], fill=1)  # White on black
+    # Calculate hexagon points for 85x85 image (centered, with good border)
+    center_x, center_y = icon_size // 2, icon_size // 2
+    radius = 32  # Radius to fit nicely in 85x85 with border
+    
+    # Hexagon points (6 sides, starting from top and going clockwise)
+    import math
+    hexagon_points = []
+    for i in range(6):
+        angle = math.pi / 3 * i - math.pi / 2  # Start from top (-90 degrees)
+        x = center_x + radius * math.cos(angle)
+        y = center_y + radius * math.sin(angle)
+        hexagon_points.append((x, y))
+    
+    # Draw filled hexagon (black on white)
+    draw.polygon(hexagon_points, fill=0, outline=0)
+    
+    # Draw hexagon border to make it more prominent
+    border_radius = radius + 2
+    border_points = []
+    for i in range(6):
+        angle = math.pi / 3 * i - math.pi / 2
+        x = center_x + border_radius * math.cos(angle)
+        y = center_y + border_radius * math.sin(angle)
+        border_points.append((x, y))
+    draw.polygon(border_points, outline=0, width=2)
+    
+    # Exclamation mark inside hexagon (white on black background)
+    # Exclamation line (vertical bar)
+    line_width = 4
+    line_height = 16
+    line_x = center_x - line_width // 2
+    line_y = center_y - 12
+    draw.rectangle([line_x, line_y, line_x + line_width, line_y + line_height], fill=1)
+    
+    # Exclamation dot
+    dot_size = 4
+    dot_x = center_x - dot_size // 2
+    dot_y = center_y + 8
+    draw.rectangle([dot_x, dot_y, dot_x + dot_size, dot_y + dot_size], fill=1)
 
     critical_img.save(os.path.join(icons_dir, 'critical.png'))
 

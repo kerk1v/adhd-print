@@ -14,7 +14,7 @@ python scripts/icon_generator.py
 
 **Output:**
 - Creates 85x85px PNG icons in `static/icons/`
-- Icons: critical.png, urgent.png, normal.png, low.png
+- Icons: critical.png (hexagonal stop sign), urgent.png, normal.png, low.png
 - 1-bit format optimized for thermal printers
 
 **Requirements:**

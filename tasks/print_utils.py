@@ -187,7 +187,7 @@ def create_task_image(task):
         icon_y = 15
 
         if task.urgency == 'critical':
-            # Report problem style for critical (adjusted for 85x85)
+            # Hexagonal stop sign style for critical (adjusted for 85x85)
             draw.rectangle([icon_x + 18, icon_y + 5, icon_x +
                            25, icon_y + 70], fill=0)  # Pole
             draw.polygon([(icon_x +
