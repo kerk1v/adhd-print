@@ -21,6 +21,7 @@ RUN apt-get update && apt-get install -y \
     fonts-dejavu-core \
     fonts-liberation \
     fontconfig \
+    git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
