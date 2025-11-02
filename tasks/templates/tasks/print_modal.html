@@ -1,4 +1,4 @@
-<!-- Print Confirmation Modal -->
+<!-- Enhanced Print Confirmation Modal -->
 <div class="modal fade" id="printConfirmModal" tabindex="-1" aria-labelledby="printConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -8,19 +8,68 @@
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body text-center">
-                <div class="mb-3">
+            <div class="modal-body">
+                <div class="text-center mb-3">
                     <i class="fas fa-print fa-3x text-primary mb-3"></i>
+                    <h6 id="print-task-title">Print this task?</h6>
                 </div>
-                <h6>Print this task?</h6>
-                <p class="text-muted mb-0">The task will be printed to your configured ESC/P printer.</p>
+                
+                <!-- Print Method Selection -->
+                <div class="mb-3" id="print-method-selection">
+                    <label class="form-label">Print Method:</label>
+                    <div class="print-method-options">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="print_method" id="local_print" value="local" checked>
+                            <label class="form-check-label" for="local_print">
+                                <i class="fas fa-usb me-1"></i>Local Printer (USB/Serial)
+                                <small class="text-muted d-block">Print directly to connected thermal printer</small>
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="print_method" id="server_print" value="server">
+                            <label class="form-check-label" for="server_print">
+                                <i class="fas fa-network-wired me-1"></i>Server Printer
+                                <small class="text-muted d-block">Print via network printer (requires server setup)</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Print Options -->
+                <div id="print-options" class="mb-3">
+                    <div class="row justify-content-center">
+                        <div class="col-6">
+                            <label class="form-label text-center d-block">Width:</label>
+                            <select class="form-select form-select-sm" id="print-width-modal">
+                                <option value="80mm">80mm</option>
+                                <option value="57mm">57mm</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div id="print-progress" class="mb-3" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Printing...</span>
+                        </div>
+                        <span id="print-progress-text">Preparing to print...</span>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" role="progressbar" style="width: 0%" id="print-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- Status Messages -->
+                <div id="print-status-messages"></div>
             </div>
             <div class="modal-footer justify-content-center">
-                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> No
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="cancel-print-btn">
+                    <i class="fas fa-times"></i> Cancel
                 </button>
                 <button type="button" class="btn btn-primary" id="confirmPrintBtn">
-                    <i class="fas fa-print"></i> Yes, Print
+                    <i class="fas fa-print"></i> Print Task
                 </button>
             </div>
         </div>

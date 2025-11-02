@@ -549,11 +549,6 @@ class UserProfile(models.Model):
         default='local',
         help_text="Preferred printing method"
     )
-    preferred_local_printer = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Stored local printer configuration"
-    )
     printer_settings = models.JSONField(
         default=dict,
         blank=True,
@@ -582,10 +577,6 @@ class UserProfile(models.Model):
             return 'server'
         else:
             return 'local'
-
-    def has_local_printer_configured(self):
-        """Check if user has a local printer configured"""
-        return bool(self.preferred_local_printer.get('device_id'))
 
 
 @receiver(post_save, sender=User)

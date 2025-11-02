@@ -86,10 +86,6 @@ def test_actual_printing():
     print(f"\n🖨️  Testing direct printing for task: {task.title}")
     print(f"🖨️  Printer settings: {settings.PRINTER_HOST}:{settings.PRINTER_PORT}")
     
-    # Test text mode first (safer)
-    success, message = print_task(task, use_graphics=False)
-    print(f"📊 Text mode result: {success} - {message}")
-    
     # Test graphics mode
     success, message = print_task(task, use_graphics=True)
     print(f"📊 Graphics mode result: {success} - {message}")

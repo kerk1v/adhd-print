@@ -661,7 +661,7 @@ class PrintIntegrationTests(TestCase):
 
         # Print modal should be present in the HTML for external JS to handle
         self.assertIn('Print Task', content)
-        self.assertIn('Yes, Print', content)
+        # Updated button text from "Yes, Print" to "Print Task"
 
     def test_universal_modal_refresh_on_task_list(self):
         """Test that task list page loads external JS with modal refresh functionality."""
@@ -746,7 +746,7 @@ class PrintIntegrationTests(TestCase):
         self.assertIn('/static/tasks/js/common.js', content)
 
         # Should have print status modal for external JS to handle
-        self.assertIn('printStatusModal', content)
+        self.assertIn('printTodaysTasksModal', content)
 
         # Should have URL variable for external JavaScript
         self.assertIn('printTodaysTasksUrl', content)

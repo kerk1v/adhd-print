@@ -70,11 +70,6 @@ def test_print_function():
     
     print(f"\nTesting print function with task ID {task.id}...")
     
-    # Test text mode printing (safer)
-    print("Testing text mode printing...")
-    success, message = print_task(task, use_graphics=False)
-    print(f"Text mode result: {success}, message: {message}")
-    
     # Test graphics mode printing
     print("Testing graphics mode printing...")
     success, message = print_task(task, use_graphics=True)

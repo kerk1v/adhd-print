@@ -24,8 +24,8 @@ class LocalPrintManager {
         
         // Configuration
         this.config = {
-            preferredMode: 'graphics',        // 'graphics' or 'text'
-            allowFallback: true,              // Allow fallback to text mode
+            preferredMode: 'graphics',        // Always use graphics mode
+            allowFallback: false,             // No fallback to text mode
             retryAttempts: 2,                 // Number of retry attempts
             timeoutMs: 30000,                 // Print timeout in milliseconds
             queueProcessingDelay: 1000        // Delay between queued prints

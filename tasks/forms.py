@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from .models import Task
+from .models import Task, UserProfile
 
 
 class TaskForm(forms.ModelForm):
@@ -123,3 +123,101 @@ class TaskForm(forms.ModelForm):
                         'weekdays': [start_date.weekday()]}
 
         return cleaned_data
+
+
+class UserProfileForm(forms.ModelForm):
+    """Form for editing user profile and printing preferences"""
+    
+    # Add custom field for printer width
+    printer_width = forms.ChoiceField(
+        choices=[
+            ('80mm', '80mm (Standard receipts)'),
+            ('57mm', '57mm (Narrow receipts)'),
+        ],
+        initial='80mm',
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Printer Width',
+        help_text='Select the width of your thermal printer paper'
+    )
+    
+    class Meta:
+        model = UserProfile
+        fields = ['printing_method', 'server_printing_enabled']
+        widgets = {
+            'printing_method': forms.RadioSelect(attrs={
+                'class': 'form-check-input',
+                'onchange': 'togglePrintingMethod()'
+            }),
+            'server_printing_enabled': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'
+            })
+        }
+        labels = {
+            'printing_method': 'Preferred Printing Method',
+            'server_printing_enabled': 'Enable Server-Based Printing (only when local printing is not available)'
+        }
+        help_texts = {
+            'printing_method': 'Choose your preferred method for printing tasks',
+            'server_printing_enabled': 'Allow fallback to server printing when local printing fails or is unavailable'
+        }
+
+    def __init__(self, *args, **kwargs):
+        # Extract user from kwargs to check admin status
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+        
+        # Add CSS classes and customize labels
+        self.fields['printing_method'].widget.attrs.update({
+            'class': 'form-check-input'
+        })
+        
+        # Customize choices based on server printing availability
+        available_choices = [
+            ('local', 'Local Printing (USB/Serial) - Print directly to connected thermal printer'),
+        ]
+        
+        # Only show server printing option if it's enabled for this user
+        if self.instance and self.instance.pk and self.instance.server_printing_enabled:
+            available_choices.append(
+                ('server', 'Server Printing - Print via network printer (requires server setup)')
+            )
+        
+        self.fields['printing_method'].choices = available_choices
+        
+        # Only show server_printing_enabled field for admin users
+        if not (self.user and self.user.is_staff):
+            # Hide the server_printing_enabled field for non-admin users
+            self.fields['server_printing_enabled'].widget = forms.HiddenInput()
+            self.fields['server_printing_enabled'].label = ""
+            self.fields['server_printing_enabled'].help_text = ""
+        
+        # Load printer width from printer_settings
+        if self.instance and self.instance.pk:
+            printer_width = self.instance.printer_settings.get('width', '80mm')
+            self.fields['printer_width'].initial = printer_width
+
+    def clean(self):
+        cleaned_data = super().clean()
+        printing_method = cleaned_data.get('printing_method')
+        server_printing_enabled = cleaned_data.get('server_printing_enabled')
+        
+        # Validate that user can only select server printing if it's enabled for them
+        if printing_method == 'server':
+            if not (self.instance and self.instance.pk and self.instance.server_printing_enabled):
+                raise ValidationError(
+                    "Server printing is not enabled for your account. Please contact an administrator."
+                )
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        
+        # Save printer width to printer_settings
+        if not instance.printer_settings:
+            instance.printer_settings = {}
+        instance.printer_settings['width'] = self.cleaned_data['printer_width']
+        
+        if commit:
+            instance.save()
+        return instance

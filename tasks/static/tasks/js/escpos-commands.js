@@ -97,195 +97,9 @@ class ESCPOSCommands {
         return this.combineCommands(commands);
     }
 
-    /**
-     * Convert task object to ESC/POS commands in text mode
-     * @param {Object} task - Task object with title, description, urgency, due_date, hierarchy
-     * @param {Object} options - Printing options
-     * @returns {Uint8Array} Complete ESC/POS command sequence
-     */
-    taskToTextESCPOS(task, options = {}) {
-        try {
-            const commands = [];
-            
-            // Initialize printer
-            commands.push(this.initializePrinter());
-            
-            // Create border line
-            const borderLine = this.formatting.borderChar.repeat(this.capabilities.charsPerLine);
-            
-            // Draw top border with urgency indicator
-            const urgencySymbol = this.formatting.urgencySymbols[task.urgency] || '[?]  ';
-            const topLine = this.formatting.borderChar.repeat(35) + urgencySymbol;
-            commands.push(this.stringToBytes(topLine));
-            commands.push(this.commands.LF);
-            
-            // Add due date information
-            const dueText = this.formatDueDate(task.due_date);
-            commands.push(this.stringToBytes(dueText));
-            commands.push(this.commands.LF);
-            
-            // Add separator line
-            const separatorLine = this.formatting.separatorChar.repeat(this.capabilities.charsPerLine);
-            commands.push(this.stringToBytes(separatorLine));
-            commands.push(this.commands.LF);
-            
-            // Add task hierarchy if exists
-            if (task.hierarchy && task.hierarchy.length > 1) {
-                commands.push(this.formatTaskHierarchy(task.hierarchy));
-                commands.push(this.stringToBytes(separatorLine));
-                commands.push(this.commands.LF);
-            }
-            
-            // Add task title
-            const titleCommands = this.formatTaskTitle(task.title);
-            commands.push(titleCommands);
-            commands.push(this.stringToBytes(separatorLine));
-            commands.push(this.commands.LF);
-            
-            // Add description if exists
-            if (task.description && task.description.trim()) {
-                const descCommands = this.formatTaskDescription(task.description);
-                commands.push(descCommands);
-                commands.push(this.stringToBytes(separatorLine));
-                commands.push(this.commands.LF);
-            }
-            
-            // Add timestamp
-            const timestamp = new Date(task.created_at || Date.now()).toLocaleString();
-            commands.push(this.stringToBytes(`Created: ${timestamp}`));
-            commands.push(this.commands.LF);
-            
-            // Add bottom border
-            commands.push(this.stringToBytes(borderLine));
-            commands.push(this.commands.LF);
-            
-            // Add extra lines and cut
-            commands.push(this.commands.LF);
-            commands.push(this.commands.LF);
-            commands.push(this.commands.FULL_CUT);
-            
-            return this.combineCommands(commands);
-            
-        } catch (error) {
-            console.error('Error generating text ESC/POS commands:', error);
-            throw new Error(`ESC/POS text generation failed: ${error.message}`);
-        }
-    }
 
     /**
-     * Format due date information
-     * @param {string|Date} dueDate - Due date
-     * @returns {string} Formatted due date text
-     */
-    formatDueDate(dueDate) {
-        if (!dueDate) {
-            return 'DUE: Not set';
-        }
-        
-        try {
-            const due = new Date(dueDate);
-            const today = new Date();
-            const dueDateStr = due.toISOString().split('T')[0]; // YYYY-MM-DD format
-            
-            // Compare dates (normalize to start of day)
-            const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
-            const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-            
-            if (dueDay < todayDay) {
-                return `DUE: ${dueDateStr} (OVERDUE!)`;
-            } else if (dueDay.getTime() === todayDay.getTime()) {
-                return `DUE: ${dueDateStr} (TODAY!)`;
-            } else {
-                return `DUE: ${dueDateStr}`;
-            }
-        } catch (error) {
-            return `DUE: ${dueDate} (Invalid date)`;
-        }
-    }
-
-    /**
-     * Format task hierarchy (parent tasks)
-     * @param {Array} hierarchy - Array of task names from root to current
-     * @returns {Uint8Array} Formatted hierarchy commands
-     */
-    formatTaskHierarchy(hierarchy) {
-        const commands = [];
-        
-        // Get parent tasks (all except last which is current task)
-        const parentTasks = hierarchy.slice(0, -1);
-        
-        if (parentTasks.length === 0) {
-            return new Uint8Array();
-        }
-        
-        // Add "Parents" header - centered and underlined
-        const parentsLabel = 'Parents';
-        const labelPadding = Math.floor((this.capabilities.charsPerLine - parentsLabel.length) / 2);
-        const centeredLabel = ' '.repeat(labelPadding) + parentsLabel;
-        
-        commands.push(this.commands.ALIGN_CENTER);
-        commands.push(this.commands.UNDERLINE_ON);
-        commands.push(this.stringToBytes(centeredLabel));
-        commands.push(this.commands.UNDERLINE_OFF);
-        commands.push(this.commands.LF);
-        commands.push(this.commands.ALIGN_LEFT);
-        
-        // Add each parent task, centered
-        parentTasks.forEach(parentTask => {
-            const wrappedLines = this.wrapText(parentTask, this.formatting.maxTitleChars);
-            wrappedLines.forEach(line => {
-                const linePadding = Math.floor((this.capabilities.charsPerLine - line.length) / 2);
-                const centeredLine = ' '.repeat(linePadding) + line;
-                commands.push(this.stringToBytes(centeredLine));
-                commands.push(this.commands.LF);
-            });
-        });
-        
-        return this.combineCommands(commands);
-    }
-
-    /**
-     * Format task title with word wrapping
-     * @param {string} title - Task title
-     * @returns {Uint8Array} Formatted title commands
-     */
-    formatTaskTitle(title) {
-        const commands = [];
-        
-        if (!title || !title.trim()) {
-            return new Uint8Array();
-        }
-        
-        const wrappedLines = this.wrapText(title, this.formatting.maxTitleChars);
-        wrappedLines.forEach(line => {
-            commands.push(this.stringToBytes(line));
-            commands.push(this.commands.LF);
-        });
-        
-        return this.combineCommands(commands);
-    }
-
-    /**
-     * Format task description with word wrapping
-     * @param {string} description - Task description
-     * @returns {Uint8Array} Formatted description commands
-     */
-    formatTaskDescription(description) {
-        const commands = [];
-        
-        if (!description || !description.trim()) {
-            return new Uint8Array();
-        }
-        
-        const wrappedLines = this.wrapText(description, this.formatting.maxDescChars);
-        wrappedLines.forEach(line => {
-            commands.push(this.stringToBytes(line));
-            commands.push(this.commands.LF);
-        });
-        
-        return this.combineCommands(commands);
-    }
-
+     * Generate ESC/POS commands for graphics mode using server-side generation
     /**
      * Wrap text to specified character width
      * @param {string} text - Text to wrap
@@ -420,30 +234,11 @@ class ESCPOSCommands {
      * @returns {Promise<Uint8Array>} ESC/POS commands
      */
     async generateESCPOSCommands(task, options = {}) {
-        const preferredMode = options.mode || 'graphics'; // 'graphics' or 'text'
-        const allowFallback = options.allowFallback !== false;
-        
+        // Always use graphics mode - no fallback to text mode
         try {
-            if (preferredMode === 'graphics') {
-                try {
-                    // Try graphics mode first
-                    return await this.taskToGraphicsESCPOS(task, options);
-                } catch (error) {
-                    console.warn('Graphics mode failed:', error.message);
-                    
-                    if (allowFallback) {
-                        console.log('Falling back to text mode...');
-                        return this.taskToTextESCPOS(task, options);
-                    } else {
-                        throw error;
-                    }
-                }
-            } else {
-                // Use text mode directly
-                return this.taskToTextESCPOS(task, options);
-            }
+            return await this.taskToGraphicsESCPOS(task, options);
         } catch (error) {
-            console.error('ESC/POS command generation failed:', error);
+            console.error('Graphics mode ESC/POS generation failed:', error);
             throw error;
         }
     }
@@ -557,6 +352,9 @@ class ESCPOSCommands {
 
 // Create global instance
 const escposCommands = new ESCPOSCommands();
+
+// Make available on window for other modules
+window.escposCommands = escposCommands;
 
 // Export for module systems
 if (typeof module !== 'undefined' && module.exports) {

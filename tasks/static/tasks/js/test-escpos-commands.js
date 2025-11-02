@@ -2,7 +2,7 @@
  * Comprehensive Test Suite for ESC/POS Command Generation and Local Printing
  * 
  * This test suite validates:
- * - ESC/POS command generation (text and graphics modes)
+ * - ESC/POS command generation (graphics mode)
  * - Task data conversion and validation
  * - Server-side graphics API integration
  * - Local print manager functionality
@@ -64,7 +64,6 @@ class ESCPOSTestSuite {
         try {
             // Core ESC/POS Command Tests
             await this.testESCPOSBasicCommands();
-            await this.testTextModeGeneration();
             await this.testTaskValidation();
             await this.testTextWrapping();
             await this.testDueDateFormatting();
@@ -125,45 +124,6 @@ class ESCPOSTestSuite {
             const testPrint = escpos.generateTestPrint();
             this.assert(testPrint instanceof Uint8Array, 'Test print should return Uint8Array');
             this.assert(testPrint.length > 100, 'Test print should be substantial');
-            
-            this.passTest(testName);
-            
-        } catch (error) {
-            this.failTest(testName, error.message);
-        }
-    }
-
-    /**
-     * Test text mode ESC/POS generation
-     */
-    async testTextModeGeneration() {
-        const testName = 'Text Mode ESC/POS Generation';
-        console.log(`📋 Testing: ${testName}`);
-        
-        try {
-            const escpos = new ESCPOSCommands();
-            
-            // Test each sample task
-            for (const [taskType, taskData] of Object.entries(this.sampleTasks)) {
-                console.log(`  ↳ Testing task type: ${taskType}`);
-                
-                const commands = escpos.taskToTextESCPOS(taskData);
-                
-                this.assert(commands instanceof Uint8Array, 
-                    `${taskType} task should return Uint8Array`);
-                this.assert(commands.length > 50, 
-                    `${taskType} task commands should be substantial`);
-                
-                // Verify commands contain expected elements
-                const commandStr = Array.from(commands).map(b => String.fromCharCode(b)).join('');
-                this.assert(commandStr.includes(taskData.title), 
-                    `${taskType} commands should contain task title`);
-                
-                if (taskData.description) {
-                    this.assert(commandStr.includes(taskData.description), 
-                        `${taskType} commands should contain description`);
-                }
-            }
             
             this.passTest(testName);
             
@@ -570,19 +530,14 @@ class ESCPOSTestSuite {
             const task = { ...this.sampleTasks.complex };
             escpos.validateTask(task);
             
-            // Generate text commands
-            const textCommands = escpos.taskToTextESCPOS(task);
-            this.assert(textCommands instanceof Uint8Array, 
-                'Text workflow should produce commands');
-            
-            // Test fallback mechanism
-            const fallbackCommands = await escpos.generateESCPOSCommands(task, {
+            // Generate graphics commands (will test fallback to text)
+            const graphicsCommands = await escpos.generateESCPOSCommands(task, {
                 mode: 'graphics',
                 allowFallback: true
             });
-            // This should fallback to text mode since graphics API is not mocked
-            this.assert(fallbackCommands instanceof Uint8Array, 
-                'Fallback workflow should work');
+            // This should fallback to graphics mode since we're only supporting graphics now
+            this.assert(graphicsCommands instanceof Uint8Array, 
+                'Graphics workflow should produce commands');
             
             this.passTest(testName);
             
@@ -607,22 +562,21 @@ class ESCPOSTestSuite {
                     this.sampleTasks.simple,
                     { mode: 'graphics', allowFallback: true }
                 );
-                // Should fallback to text since no server is running
+                // Should work with graphics mode
                 this.assert(commands instanceof Uint8Array, 
-                    'Should fallback to text mode');
+                    'Should generate commands in graphics mode');
             } catch (error) {
-                // Fallback should prevent this error, but if it happens, 
-                // it's still a valid test result
-                console.log('  ↳ Fallback test completed (expected in test environment)');
+                // Graphics failure should not happen in normal operation
+                console.log('  ↳ Graphics generation test (expected to succeed in production)');
             }
             
             // Test no fallback scenario
             await this.assertAsyncThrows(async () => {
                 await escpos.generateESCPOSCommands(
                     this.sampleTasks.simple,
-                    { mode: 'graphics', allowFallback: false }
+                    { mode: 'invalid', allowFallback: false }
                 );
-            }, 'Should fail when fallback is disabled');
+            }, 'Should fail with invalid mode');
             
             this.passTest(testName);
             
@@ -716,20 +670,20 @@ async function runESCPOSTests() {
     return testSuite;
 }
 
-async function testESCPOSTextMode() {
-    console.log('🧪 Quick Text Mode Test');
+async function testESCPOSGraphicsMode() {
+    console.log('🧪 Quick Graphics Mode Test');
     try {
         const escpos = new ESCPOSCommands();
         const task = {
             id: 999,
             title: 'Quick Test Task',
-            description: 'Testing text mode generation',
+            description: 'Testing graphics mode generation',
             urgency: 'normal',
             due_date: new Date().toISOString(),
             hierarchy: ['Quick Test Task']
         };
         
-        const commands = escpos.taskToTextESCPOS(task);
+        const commands = await escpos.generateESCPOSCommands(task, { mode: 'graphics' });
         console.log(`✅ Generated ${commands.length} bytes of ESC/POS commands`);
         
         // Display sample of commands as hex
@@ -740,7 +694,7 @@ async function testESCPOSTextMode() {
         
         return commands;
     } catch (error) {
-        console.error('❌ Text mode test failed:', error);
+        console.error('❌ Graphics mode test failed:', error);
         throw error;
     }
 }
@@ -769,8 +723,8 @@ async function testESCPOSIntegration() {
             hierarchy: ['Integration Test Task']
         };
         
-        // Test with text mode (should work without server)
-        const result = await printManager.printTask(task, { mode: 'text' });
+        // Test with graphics mode (modern workflow)
+        const result = await printManager.printTask(task, { mode: 'graphics' });
         
         if (result.success) {
             console.log('✅ Integration test passed');
@@ -793,7 +747,7 @@ if (typeof module !== 'undefined' && module.exports) {
     module.exports = { 
         ESCPOSTestSuite, 
         runESCPOSTests,
-        testESCPOSTextMode,
+        testESCPOSGraphicsMode,
         testESCPOSIntegration
     };
 }

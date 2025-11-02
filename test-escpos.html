@@ -26,7 +26,7 @@
     <div class="test-section">
         <h2>ESC/POS Command Generation</h2>
         <button onclick="testBasicCommands()">Test Basic Commands</button>
-        <button onclick="testTextGeneration()">Test Text Mode</button>
+        <button onclick="testGraphicsGeneration()">Test Graphics Mode</button>
         <button onclick="testTaskValidation()">Test Validation</button>
         <div id="command-results"></div>
     </div>
@@ -99,7 +99,7 @@
             }
         }
         
-        function testTextGeneration() {
+        function testGraphicsGeneration() {
             const results = document.getElementById('command-results');
             try {
                 const escpos = new ESCPOSCommands();
@@ -114,14 +114,20 @@
                     hierarchy: ['Test Task']
                 };
                 
-                const commands = escpos.taskToTextESCPOS(sampleTask);
-                console.log('Text ESC/POS commands:', commands);
-                
-                results.innerHTML = `<p class="success">✅ Text generation test passed (${commands.length} bytes)</p>`;
+                // Test graphics mode command generation
+                escpos.generateESCPOSCommands(sampleTask, { mode: 'graphics' })
+                    .then(commands => {
+                        console.log('Graphics ESC/POS commands:', commands);
+                        results.innerHTML = `<p class="success">✅ Graphics generation test passed (${commands.length} bytes)</p>`;
+                    })
+                    .catch(error => {
+                        results.innerHTML = `<p class="error">❌ Graphics generation test failed: ${error.message}</p>`;
+                        console.error('Graphics generation test error:', error);
+                    });
                 
             } catch (error) {
-                results.innerHTML = `<p class="error">❌ Text generation test failed: ${error.message}</p>`;
-                console.error('Text generation test error:', error);
+                results.innerHTML = `<p class="error">❌ Graphics generation test failed: ${error.message}</p>`;
+                console.error('Graphics generation test error:', error);
             }
         }
         
@@ -214,8 +220,8 @@
                     hierarchy: ['Workflow Test Task']
                 };
                 
-                // Test with text mode
-                printManager.printTask(sampleTask, { mode: 'text' })
+                // Test with graphics mode
+                printManager.printTask(sampleTask, { mode: 'graphics' })
                     .then(result => {
                         if (result.success) {
                             results.innerHTML += `<p class="success">✅ Complete workflow test passed (${result.duration}ms)</p>`;

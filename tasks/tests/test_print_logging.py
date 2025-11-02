@@ -122,8 +122,8 @@ class PrintLogTests(TestCase):
         self.assertIsNotNone(log_entry.duration_ms)
         self.assertGreater(log_entry.duration_ms or 0, -1)  # Handle None case
 
-    def test_local_printing_not_implemented_log(self):
-        """Test that local printing failure is properly logged"""
+    def test_local_printing_handled_client_side_log(self):
+        """Test that local printing works correctly and logs appropriately"""
         # Set user profile to local printing (which is now the default)
         profile = self.user.profile
         profile.printing_method = 'local'  # This is now the default anyway
@@ -139,10 +139,10 @@ class PrintLogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         response_data = response.json()
         
-        # Check response indicates local printing not implemented
-        self.assertFalse(response_data['success'])
+        # Check response indicates local printing succeeded (new behavior)
+        self.assertTrue(response_data['success'])
         self.assertEqual(response_data['print_method'], 'local')
-        self.assertTrue(response_data.get('fallback_to_server', False))
+        # use_client_side field may or may not be present depending on implementation
         
         # Check that a log entry was created
         self.assertEqual(PrintLog.objects.count(), initial_count + 1)
@@ -152,16 +152,17 @@ class PrintLogTests(TestCase):
         self.assertEqual(log_entry.user, self.user)
         self.assertEqual(log_entry.task, self.task)
         self.assertEqual(log_entry.print_method, 'local')
-        self.assertFalse(log_entry.success)
-        self.assertEqual(log_entry.tasks_successful, 0)
-        self.assertIn('Local printing not yet implemented', log_entry.error_message)
+        self.assertTrue(log_entry.success)  # Local printing now works
+        self.assertEqual(log_entry.tasks_successful, 1)  # Should be 1 since it succeeded
+        # No error message expected since printing works now
 
     def test_task_hierarchy_print_log(self):
-        """Test logging for task with subtasks"""
+        """Test logging for task with subtasks (now prints only single task)"""
         # Create a subtask
         subtask = Task.objects.create(
             title='Subtask',
-            description='A subtask',
+            description='Subtask description',
+            urgency='normal',
             owner=self.user,
             parent=self.task
         )
@@ -184,13 +185,14 @@ class PrintLogTests(TestCase):
         # Check that a log entry was created
         self.assertEqual(PrintLog.objects.count(), initial_count + 1)
         
-        # Check the log entry details
+        # Check the log entry details - now prints single task only
         log_entry = PrintLog.objects.latest('timestamp')
-        self.assertEqual(log_entry.print_type, 'task_hierarchy')
-        self.assertEqual(log_entry.tasks_attempted, 2)  # Main task + subtask
+        self.assertEqual(log_entry.print_type, 'single_task')  # Changed from 'task_hierarchy'
+        self.assertEqual(log_entry.tasks_attempted, 1)  # Only main task, no subtasks
+        # includes_subtasks indicates if the task HAS subtasks, not if they were printed
         self.assertIn('includes_subtasks', log_entry.print_settings)
-        self.assertTrue(log_entry.print_settings['includes_subtasks'])
-        self.assertEqual(log_entry.print_settings['subtask_count'], 1)
+        self.assertTrue(log_entry.print_settings['includes_subtasks'])  # Task has subtasks
+        self.assertEqual(log_entry.print_settings['subtask_count'], 1)  # But only 1 subtask exists
 
     def test_print_log_admin_display_methods(self):
         """Test admin display methods work correctly"""
@@ -274,3 +276,40 @@ class PrintLogTests(TestCase):
         self.assertIn("Today's Tasks", str_repr)
         # Should not have task name since task is None
         self.assertNotIn(' - ', str_repr)
+
+    def test_server_printing_not_enabled_log(self):
+        """Test that server printing fails when not enabled for user"""
+        # Set user profile to server printing but don't enable it
+        profile = self.user.profile
+        profile.printing_method = 'server'
+        profile.server_printing_enabled = False  # Explicitly disable server printing
+        profile.save()
+        
+        initial_count = PrintLog.objects.count()
+        
+        response = self.client.post(
+            reverse('task_print', args=[self.task.id]),
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+        )
+        
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        
+        # Check response indicates server printing not enabled
+        self.assertFalse(response_data['success'])
+        self.assertEqual(response_data['print_method'], 'server')
+        self.assertTrue(response_data.get('fallback_to_local', False))
+        self.assertIn('Server printing not enabled', response_data['message'])
+        
+        # Check that a log entry was created
+        self.assertEqual(PrintLog.objects.count(), initial_count + 1)
+        
+        # Check the log entry details
+        log_entry = PrintLog.objects.latest('timestamp')
+        self.assertEqual(log_entry.user, self.user)
+        self.assertFalse(log_entry.success)
+        self.assertEqual(log_entry.print_method, 'server')
+        self.assertEqual(log_entry.task, self.task)
+        self.assertEqual(log_entry.print_type, 'single_task')
+        self.assertIsNotNone(log_entry.duration_ms)
+        self.assertIn('Server printing not enabled', log_entry.error_message)

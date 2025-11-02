@@ -406,7 +406,6 @@ class UserProfileAdmin(admin.ModelAdmin):
         'user',
         'printing_method',
         'server_printing_enabled',
-        'has_local_printer',
         'created_at',
         'updated_at'
     ]
@@ -427,8 +426,8 @@ class UserProfileAdmin(admin.ModelAdmin):
             'description': 'Configure how this user prefers to print tasks'
         }),
         ('Local Printer Configuration', {
-            'fields': ('preferred_local_printer', 'printer_settings'),
-            'description': 'Local printer device settings and preferences',
+            'fields': ('printer_settings',),
+            'description': 'Local printer preferences and settings',
             'classes': ('collapse',)
         }),
         ('Timestamps', {
@@ -436,14 +435,6 @@ class UserProfileAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
-    def has_local_printer(self, obj):
-        """Display if user has a local printer configured"""
-        if obj.has_local_printer_configured():
-            return format_html('<span style="color: green;">✓ Configured</span>')
-        return format_html('<span style="color: gray;">Not configured</span>')
-    has_local_printer.short_description = 'Local Printer'
-    has_local_printer.admin_order_field = 'preferred_local_printer'
     
     def get_queryset(self, request):
         """Optimize queries by selecting related user"""

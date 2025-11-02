@@ -6,6 +6,18 @@
  */
 
 /**
+ * Simple printer identification - treat all discovered printers as ESC/POS thermal printers
+ */
+function identifyPrinter(vendorId, productId, deviceName = null) {
+    return {
+        name: deviceName || 'Thermal Receipt Printer',
+        type: 'ESC/POS Thermal Printer',
+        vendor: 'Generic',
+        isSupported: true
+    };
+}
+
+/**
  * WebUSB Printer Communication Class
  */
 class WebUSBPrinter {
@@ -29,9 +41,14 @@ class WebUSBPrinter {
      * @returns {Promise<Array>} Array of available devices
      */
     async discoverPrinters(filters = null) {
+        console.log('🔌 WebUSB: Starting discovery...');
+        
         if (!WebUSBPrinter.isSupported()) {
+            console.error('❌ WebUSB: Not supported in this browser');
             throw new Error('WebUSB is not supported in this browser');
         }
+        
+        console.log('✅ WebUSB: Browser support confirmed');
 
         try {
             // Default filters for common thermal printer vendors
@@ -41,25 +58,75 @@ class WebUSBPrinter {
                 { vendorId: 0x0519 }, // Citizen
                 { vendorId: 0x0fe6 }, // ICS Advent (Bixolon)
                 { vendorId: 0x20d1 }, // RONGTA
+                { vendorId: 0x0416 }, // Winbond Electronics (thermal printers)
                 // Generic USB printer class
                 { classCode: 7 } // Printer class
             ];
 
             const requestFilters = filters || defaultFilters;
             
-            console.log('🔍 Discovering USB printers with filters:', requestFilters);
+            console.log('🔍 WebUSB: Discovering printers with filters:', requestFilters);
+            console.log('🔍 WebUSB: Starting device request dialog...');
             
             this.device = await navigator.usb.requestDevice({
                 filters: requestFilters
             });
 
-            console.log('✅ USB device selected:', this.device);
-            return [this.device];
+            console.log('✅ WebUSB: Device successfully selected:', this.device);
+            console.log('📋 WebUSB: Device details:', {
+                productName: this.device.productName,
+                manufacturerName: this.device.manufacturerName,
+                vendorId: '0x' + this.device.vendorId.toString(16),
+                productId: '0x' + this.device.productId.toString(16),
+                serialNumber: this.device.serialNumber
+            });
+            
+            // Identify the printer
+            const printerInfo = identifyPrinter(
+                this.device.vendorId, 
+                this.device.productId, 
+                this.device.productName || this.device.manufacturerName
+            );
+            
+            // Create enhanced printer object
+            const printerObject = {
+                device: this.device,
+                name: printerInfo.name,
+                type: printerInfo.type,
+                vendor: printerInfo.vendor,
+                vendorId: this.device.vendorId,
+                productId: this.device.productId,
+                connection: 'USB',
+                isSupported: printerInfo.isSupported,
+                printerClass: 'WebUSBPrinter'
+            };
+            
+            console.log('🏷️ WebUSB: Identified printer:', printerObject);
+            return [printerObject];
 
         } catch (error) {
-            console.error('❌ Error discovering USB printers:', error);
+            console.error('❌ WebUSB: Discovery error:', error);
+            console.error('❌ WebUSB: Error type:', error.name);
+            console.error('❌ WebUSB: Error message:', error.message);
+            
             if (error.name === 'NotFoundError') {
+                console.warn('⚠️ WebUSB: No device found - either no matching USB devices were found or user cancelled the selection dialog');
+                console.info('💡 WebUSB: Suggestions:');
+                console.info('   • Make sure your printer is connected via USB');
+                console.info('   • Check if printer is powered on');
+                console.info('   • Try a different USB port or cable');
+                console.info('   • Some printers may not be compatible with WebUSB');
                 throw new Error('No USB printer found or user cancelled selection');
+            } else if (error.name === 'SecurityError') {
+                console.warn('⚠️ WebUSB: Security error - this usually means the page is not served over HTTPS');
+                console.info('💡 WebUSB: Security requirements:');
+                console.info('   • Must be served over HTTPS (or localhost for development)');
+                console.info('   • Must have user activation (button click)');
+            } else if (error.name === 'NotAllowedError') {
+                console.warn('⚠️ WebUSB: User denied permission or operation not allowed');
+                console.info('💡 WebUSB: Permission suggestions:');
+                console.info('   • User must grant permission when prompted');
+                console.info('   • Try clicking the button again');
             }
             throw error;
         }
@@ -255,9 +322,14 @@ class WebSerialPrinter {
      * @returns {Promise<Array>} Array of available ports
      */
     async discoverPrinters(filters = null) {
+        console.log('🔍 === WEBSERIAL DISCOVERY START ===');
+        
         if (!WebSerialPrinter.isSupported()) {
+            console.error('🔍 ❌ WebSerial not supported');
             throw new Error('WebSerial is not supported in this browser');
         }
+
+        console.log('🔍 ✅ WebSerial is supported');
 
         try {
             // Default filters for common thermal printer USB-to-Serial chips
@@ -274,16 +346,41 @@ class WebSerialPrinter {
             const requestFilters = filters || defaultFilters;
             
             console.log('🔍 Discovering Serial printers with filters:', requestFilters);
+            console.log('🔍 Calling navigator.serial.requestPort()...');
             
             this.port = await navigator.serial.requestPort({
                 filters: requestFilters
             });
 
             console.log('✅ Serial port selected:', this.port);
-            return [this.port];
+            console.log('✅ Port info:', {
+                connected: this.port.connected,
+                readable: this.port.readable,
+                writable: this.port.writable
+            });
+            
+            // Create simplified printer object for serial connection
+            const printerObject = {
+                device: this.port,
+                name: 'Thermal Receipt Printer',
+                type: 'ESC/POS Thermal Printer',
+                vendor: 'Generic',
+                vendorId: null,
+                productId: null,
+                connection: 'Serial',
+                isSupported: true,
+                printerClass: 'WebSerialPrinter'
+            };
+            
+            console.log('🏷️ WebSerial: Identified printer:', printerObject);
+            console.log('🔍 === WEBSERIAL DISCOVERY END ===');
+            return [printerObject];
 
         } catch (error) {
+            console.error('❌ === WEBSERIAL DISCOVERY ERROR ===');
             console.error('❌ Error discovering serial printers:', error);
+            console.error('❌ Error name:', error.name);
+            console.error('❌ Error message:', error.message);
             if (error.name === 'NotFoundError') {
                 throw new Error('No serial printer found or user cancelled selection');
             }
@@ -475,6 +572,21 @@ class LocalPrinterManager {
         this.currentPrinter = null;
         this.printerType = null; // 'usb' or 'serial'
         this.discoveredDevices = [];
+        
+        // Clean up any old saved device data
+        this.clearOldDeviceData();
+    }
+    
+    /**
+     * Clear any old device persistence data
+     */
+    clearOldDeviceData() {
+        try {
+            localStorage.removeItem('adhd_print_saved_device');
+            console.log('🧹 Cleared old device persistence data');
+        } catch (error) {
+            // Ignore localStorage errors
+        }
     }
 
     /**
@@ -493,12 +605,15 @@ class LocalPrinterManager {
      * @param {string} preferredMethod - 'usb', 'serial', or 'auto'
      */
     async discoverPrinters(preferredMethod = 'auto') {
-        console.log('🔍 Starting printer discovery...');
+        console.log('🔍 === PRINTER MANAGER DISCOVERY START ===');
+        console.log('🔍 Starting printer discovery with method:', preferredMethod);
         
         const supported = this.getSupportedMethods();
+        console.log('🔍 Supported methods:', supported);
         this.discoveredDevices = [];
 
         if (!supported.anySupported) {
+            console.error('🔍 ❌ No supported methods available');
             throw new Error('Neither WebUSB nor WebSerial is supported in this browser');
         }
 
@@ -519,9 +634,16 @@ class LocalPrinterManager {
         // Try each method
         for (const method of methods) {
             try {
+                console.log(`🔍 Attempting discovery via ${method}...`);
+                
                 if (method === 'serial' && supported.webSerial) {
+                    console.log('🔍 Creating WebSerialPrinter instance...');
                     const serialPrinter = new WebSerialPrinter();
+                    console.log('🔍 Calling serialPrinter.discoverPrinters()...');
                     const devices = await serialPrinter.discoverPrinters();
+                    console.log(`🔍 WebSerial discovery returned:`, devices);
+                    console.log(`🔍 Found ${devices.length} serial devices`);
+                    
                     this.discoveredDevices.push(...devices.map(device => ({
                         device,
                         type: 'serial',
@@ -533,8 +655,13 @@ class LocalPrinterManager {
                 }
 
                 if (method === 'usb' && supported.webUSB) {
+                    console.log('🔍 Creating WebUSBPrinter instance...');
                     const usbPrinter = new WebUSBPrinter();
+                    console.log('🔍 Calling usbPrinter.discoverPrinters()...');
                     const devices = await usbPrinter.discoverPrinters();
+                    console.log(`🔍 WebUSB discovery returned:`, devices);
+                    console.log(`🔍 Found ${devices.length} USB devices`);
+                    
                     this.discoveredDevices.push(...devices.map(device => ({
                         device,
                         type: 'usb',
@@ -542,16 +669,24 @@ class LocalPrinterManager {
                     })));
                     
                     // If user selected a device, break (only one selection allowed per API call)
-                    if (devices.length > 0) break;
+                    if (devices.length > 0) {
+                        console.log('🔍 Breaking after USB discovery found devices');
+                        break;
+                    }
                 }
 
             } catch (error) {
-                console.warn(`⚠️ Discovery failed for ${method}:`, error.message);
+                console.warn(`⚠️ Discovery failed for ${method}:`, error);
+                console.warn(`⚠️ Error name: ${error.name}`);
+                console.warn(`⚠️ Error message: ${error.message}`);
+                if (error.stack) console.warn(`⚠️ Error stack:`, error.stack);
                 // Continue with other methods
             }
         }
 
         console.log(`✅ Discovery complete. Found ${this.discoveredDevices.length} device(s)`);
+        console.log(`✅ Discovered devices:`, this.discoveredDevices);
+        console.log('🔍 === PRINTER MANAGER DISCOVERY END ===');
         return this.discoveredDevices;
     }
 
@@ -597,19 +732,51 @@ class LocalPrinterManager {
      */
     async connectToPrinter(deviceInfo, options = {}) {
         try {
-            console.log('🔌 Connecting to printer:', deviceInfo.type);
+            console.log('🔌 Connecting to printer:', deviceInfo);
 
-            if (deviceInfo.type === 'serial') {
-                this.currentPrinter = new WebSerialPrinter();
-                await this.currentPrinter.connect(deviceInfo.device, options);
-            } else if (deviceInfo.type === 'usb') {
-                this.currentPrinter = new WebUSBPrinter();
-                await this.currentPrinter.connect(deviceInfo.device);
+            // Handle both old format and new enhanced printer objects
+            let connectionType, rawDevice;
+            
+            if (deviceInfo.printerClass) {
+                // New enhanced printer object format
+                connectionType = deviceInfo.connection.toLowerCase(); // 'USB' -> 'usb'
+                rawDevice = deviceInfo.device;
+                console.log('🔌 Using enhanced printer object format');
+            } else if (deviceInfo.type && deviceInfo.device) {
+                // Legacy format from print modal: {type: 'usb', device: enhancedPrinterObject}
+                connectionType = deviceInfo.type;
+                if (deviceInfo.device.device && deviceInfo.device.printerClass) {
+                    // The device property contains an enhanced printer object, extract the raw device
+                    rawDevice = deviceInfo.device.device;
+                    console.log('🔌 Using legacy format with enhanced device, extracting raw USB device');
+                } else {
+                    // The device property is already a raw device
+                    rawDevice = deviceInfo.device;
+                    console.log('🔌 Using legacy format with raw device');
+                }
+            } else if (deviceInfo.device && deviceInfo.name) {
+                // Discovery format: enhanced object with device nested inside
+                connectionType = 'usb'; // Assume USB for now
+                rawDevice = deviceInfo.device; // Extract the actual USB device
+                console.log('🔌 Using discovery device format, extracting raw device');
             } else {
-                throw new Error(`Unsupported printer type: ${deviceInfo.type}`);
+                console.error('🔌 ❌ Unknown device info format:', deviceInfo);
+                throw new Error('Unknown device info format');
+            }
+            
+            console.log('🔌 Connection type:', connectionType, 'Raw device type:', rawDevice?.constructor?.name, 'Device:', rawDevice);
+
+            if (connectionType === 'serial') {
+                this.currentPrinter = new WebSerialPrinter();
+                await this.currentPrinter.connect(rawDevice, options);
+            } else if (connectionType === 'usb') {
+                this.currentPrinter = new WebUSBPrinter();
+                await this.currentPrinter.connect(rawDevice);
+            } else {
+                throw new Error(`Unsupported printer type: ${connectionType}`);
             }
 
-            this.printerType = deviceInfo.type;
+            this.printerType = connectionType;
             console.log('🎉 Printer connected successfully');
 
         } catch (error) {
@@ -674,10 +841,14 @@ class LocalPrinterManager {
         await this.sendData(testData);
         console.log('✅ Test print sent');
     }
+
 }
 
 // Global instance for easy access
 const localPrinterManager = new LocalPrinterManager();
+
+// Make available on window for other modules
+window.localPrinterManager = localPrinterManager;
 
 // Export for module systems if available
 if (typeof module !== 'undefined' && module.exports) {

@@ -198,7 +198,7 @@ function submitTaskForm(shouldPrint = false) {
             if (response.success) {
                 if (shouldPrint) {
                     // Print the task directly
-                    printTaskDirectly(response.task_id, response.message);
+                    printTaskDirectly(response.task_id, response.message, response.task_title);
                 } else {
                     // Close modal and show success message
                     $('#taskModal').modal('hide');
@@ -235,40 +235,15 @@ function submitTaskForm(shouldPrint = false) {
     });
 }
 
-function printTaskDirectly(taskId, creationMessage) {
-    // Send print request immediately
-    fetch(`/tasks/print/${taskId}/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
-            'Content-Type': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        // Close the creation modal
-        $('#taskModal').modal('hide');
-        
-        if (data.success) {
-            // Show combined success message
-            showMessage(`${creationMessage} Task printed successfully!`, 'success');
-        } else {
-            // Show creation success but print failure
-            showMessage(`${creationMessage} However, printing failed: ${data.message}`, 'warning');
-        }
-    })
-    .catch(error => {
-        console.error('Print error:', error);
-        // Close modal and show creation success but print error
-        $('#taskModal').modal('hide');
-        showMessage(`${creationMessage} However, an error occurred while printing.`, 'warning');
-    })
-    .finally(() => {
-        // Refresh page to show the new task
-        setTimeout(() => {
-            window.location.reload();
-        }, 2000); // Longer delay to let user read the message
-    });
+function printTaskDirectly(taskId, creationMessage, taskTitle = null) {
+    // Close the creation modal first
+    $('#taskModal').modal('hide');
+    
+    // Show creation success message
+    showMessage(creationMessage, 'success');
+    
+    // Use our enhanced print modal system with the task title
+    showPrintConfirmModal(taskId, taskTitle);
 }
 
 function showError(message) {
