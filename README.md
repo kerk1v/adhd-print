@@ -361,9 +361,46 @@ python manage.py runserver
 ### Production Deployment Options
 
 - **🐳 [Docker Deployment](DEPLOYMENT.md#docker-deployment)** - Complete containerization with nginx, PostgreSQL, Redis
+- **📦 [GitHub Container Registry](#-github-container-registry)** - Pre-built images for quick deployment
 - **⚡ [ASGI Production](DEPLOYMENT.md#asgi-production-deployment)** - Modern async deployment with uvicorn/gunicorn  
 - **📦 [Proxmox LXC](DEPLOYMENT.md#proxmox-lxc-container-deployment)** - Lightweight Alpine Linux containers with autostart
 - **🖥️ [Traditional Server](DEPLOYMENT.md#traditional-server-deployment)** - Standard server deployment with nginx/supervisor
+
+### 🚀 GitHub Container Registry
+
+Pre-built Docker images are automatically built and published to GitHub Container Registry via GitHub Actions.
+
+#### Quick Start with Pre-built Image
+
+```bash
+# Pull the latest testing image
+docker pull ghcr.io/kerk1v/adhd-print:testing
+
+# Run with docker-compose
+curl -O https://raw.githubusercontent.com/kerk1v/adhd-print/main/docker-compose.ghcr.yml
+docker-compose -f docker-compose.ghcr.yml up -d
+
+# Or run directly
+docker run -d -p 8000:8000 \
+  --name adhd-print-testing \
+  -v adhd_print_data:/app/data \
+  ghcr.io/kerk1v/adhd-print:testing
+```
+
+#### Available Tags
+
+- `testing` - Latest development build (updated on main branch changes)
+- `main-<sha>` - Specific commit builds
+- Manual tags via workflow dispatch
+
+#### Building Custom Images
+
+The GitHub Actions workflow supports manual triggers with custom tags:
+
+1. Go to **Actions** → **Build and Push Docker Image**
+2. Click **Run workflow**  
+3. Specify custom tag (defaults to `testing`)
+4. Wait for build completion (~5-10 minutes)
 
 Each deployment method includes complete instructions, configuration examples, and troubleshooting guidance.
 
