@@ -36,8 +36,9 @@ if [ -d "venv" ]; then
 fi
 
 # Run database migrations
-echo "Running database migrations..."
-python manage.py migrate --no-input
+echo "Checking database migrations..."
+python manage.py migrate --no-input --verbosity=0
+echo "Database ready."
 
 # Check for background jobs
 echo "Starting background jobs system..."
