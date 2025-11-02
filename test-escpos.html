@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESC/POS Command Generation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .commands-display { max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🧪 ESC/POS Command Generation Test</h1>
+    
+    <div class="test-section">
+        <h2>Browser Compatibility</h2>
+        <div id="compatibility-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>ESC/POS Command Generation</h2>
+        <button onclick="testBasicCommands()">Test Basic Commands</button>
+        <button onclick="testTextGeneration()">Test Text Mode</button>
+        <button onclick="testTaskValidation()">Test Validation</button>
+        <div id="command-results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Sample Task Print</h2>
+        <button onclick="generateSampleTask()">Generate Sample Task</button>
+        <button onclick="testCompleteWorkflow()">Test Complete Workflow</button>
+        <div id="sample-results"></div>
+        <div id="commands-display" class="commands-display"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Suite</h2>
+        <button onclick="runFullTestSuite()">Run All Tests</button>
+        <div id="test-suite-results"></div>
+    </div>
+
+    <!-- Load the ESC/POS modules -->
+    <script src="../tasks/static/tasks/js/local-printing-support.js"></script>
+    <script src="../tasks/static/tasks/js/local-printer-communication.js"></script>
+    <script src="../tasks/static/tasks/js/escpos-commands.js"></script>
+    <script src="../tasks/static/tasks/js/local-print-integration.js"></script>
+    <script src="../tasks/static/tasks/js/test-escpos-commands.js"></script>
+
+    <script>
+        // Test functions
+        function checkCompatibility() {
+            const results = document.getElementById('compatibility-results');
+            let html = '<h3>Browser API Support:</h3>';
+            
+            if (window.localPrintingSupportDetector) {
+                const support = localPrintingSupportDetector.checkSupport();
+                html += `<p class="${support.webusb.supported ? 'success' : 'error'}">WebUSB: ${support.webusb.supported ? '✅ Supported' : '❌ Not supported'}</p>`;
+                html += `<p class="${support.webserial.supported ? 'success' : 'error'}">WebSerial: ${support.webserial.supported ? '✅ Supported' : '❌ Not supported'}</p>`;
+            } else {
+                html += '<p class="error">❌ Local printing support detector not loaded</p>';
+            }
+            
+            results.innerHTML = html;
+        }
+        
+        function testBasicCommands() {
+            const results = document.getElementById('command-results');
+            try {
+                const escpos = new ESCPOSCommands();
+                
+                // Test initialization
+                const initCommands = escpos.initializePrinter();
+                console.log('Init commands:', initCommands);
+                
+                // Test string conversion
+                const testStr = 'Hello World';
+                const bytes = escpos.stringToBytes(testStr);
+                console.log('String to bytes:', bytes);
+                
+                // Test command combination
+                const combined = escpos.combineCommands([
+                    escpos.commands.INIT,
+                    escpos.stringToBytes('Test'),
+                    escpos.commands.LF
+                ]);
+                console.log('Combined commands:', combined);
+                
+                results.innerHTML = '<p class="success">✅ Basic commands test passed</p>';
+                
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Basic commands test failed: ${error.message}</p>`;
+                console.error('Basic commands test error:', error);
+            }
+        }
+        
+        function testTextGeneration() {
+            const results = document.getElementById('command-results');
+            try {
+                const escpos = new ESCPOSCommands();
+                
+                const sampleTask = {
+                    id: 1,
+                    title: 'Test Task',
+                    description: 'This is a test task description',
+                    urgency: 'normal',
+                    due_date: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    hierarchy: ['Test Task']
+                };
+                
+                const commands = escpos.taskToTextESCPOS(sampleTask);
+                console.log('Text ESC/POS commands:', commands);
+                
+                results.innerHTML = `<p class="success">✅ Text generation test passed (${commands.length} bytes)</p>`;
+                
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Text generation test failed: ${error.message}</p>`;
+                console.error('Text generation test error:', error);
+            }
+        }
+        
+        function testTaskValidation() {
+            const results = document.getElementById('command-results');
+            try {
+                const escpos = new ESCPOSCommands();
+                
+                // Test valid task
+                const validTask = { title: 'Valid Task' };
+                escpos.validateTask(validTask);
+                
+                // Test invalid task
+                try {
+                    escpos.validateTask(null);
+                    throw new Error('Should have failed validation');
+                } catch (validationError) {
+                    // Expected to fail
+                }
+                
+                results.innerHTML = '<p class="success">✅ Task validation test passed</p>';
+                
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Task validation test failed: ${error.message}</p>`;
+                console.error('Task validation test error:', error);
+            }
+        }
+        
+        function generateSampleTask() {
+            const results = document.getElementById('sample-results');
+            const commandsDisplay = document.getElementById('commands-display');
+            
+            try {
+                const escpos = new ESCPOSCommands();
+                
+                const sampleTask = {
+                    id: 123,
+                    title: 'Sample ADHD Task with Long Title That Will Wrap',
+                    description: 'This is a longer description that demonstrates how the ESC/POS command generation handles word wrapping and formatting for thermal printers.',
+                    urgency: 'urgent',
+                    due_date: new Date().toISOString(),
+                    created_at: new Date().toISOString(),
+                    hierarchy: ['Root Task', 'Parent Task', 'Sample ADHD Task with Long Title That Will Wrap']
+                };
+                
+                const commands = escpos.taskToTextESCPOS(sampleTask);
+                
+                // Display commands as hex
+                const hexDisplay = Array.from(commands)
+                    .map(b => b.toString(16).padStart(2, '0'))
+                    .join(' ');
+                
+                results.innerHTML = `
+                    <p class="success">✅ Sample task generated successfully</p>
+                    <p class="info">Command length: ${commands.length} bytes</p>
+                `;
+                
+                commandsDisplay.innerHTML = `<strong>ESC/POS Commands (Hex):</strong><br>${hexDisplay}`;
+                
+                console.log('Sample task ESC/POS commands:', commands);
+                
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Sample task generation failed: ${error.message}</p>`;
+                console.error('Sample task generation error:', error);
+            }
+        }
+        
+        function testCompleteWorkflow() {
+            const results = document.getElementById('sample-results');
+            
+            try {
+                const printManager = new LocalPrintManager();
+                
+                // Mock the printer manager to avoid hardware requirements
+                printManager.printerManager = {
+                    getConnectionStatus: () => ({ connected: true, device: 'Mock Printer' }),
+                    discoverPrinters: async () => [{ name: 'Mock Printer', type: 'test' }],
+                    connectToPrinter: async () => {},
+                    sendData: async (data) => {
+                        console.log(`Mock printer received ${data.length} bytes`);
+                        return { success: true };
+                    }
+                };
+                
+                const sampleTask = {
+                    id: 456,
+                    title: 'Workflow Test Task',
+                    description: 'Testing complete workflow',
+                    urgency: 'critical',
+                    hierarchy: ['Workflow Test Task']
+                };
+                
+                // Test with text mode
+                printManager.printTask(sampleTask, { mode: 'text' })
+                    .then(result => {
+                        if (result.success) {
+                            results.innerHTML += `<p class="success">✅ Complete workflow test passed (${result.duration}ms)</p>`;
+                        } else {
+                            results.innerHTML += `<p class="error">❌ Workflow test failed: ${result.error}</p>`;
+                        }
+                    })
+                    .catch(error => {
+                        results.innerHTML += `<p class="error">❌ Workflow test error: ${error.message}</p>`;
+                    });
+                
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Workflow test setup failed: ${error.message}</p>`;
+                console.error('Workflow test error:', error);
+            }
+        }
+        
+        async function runFullTestSuite() {
+            const results = document.getElementById('test-suite-results');
+            results.innerHTML = '<p class="info">🧪 Running full test suite...</p>';
+            
+            try {
+                const testSuite = await runESCPOSTests();
+                
+                let html = `
+                    <h3>Test Suite Results</h3>
+                    <p><strong>Total Tests:</strong> ${testSuite.totalTests}</p>
+                    <p><strong>Passed:</strong> <span class="success">${testSuite.passedTests}</span></p>
+                    <p><strong>Failed:</strong> <span class="error">${testSuite.failedTests}</span></p>
+                    <p><strong>Success Rate:</strong> ${((testSuite.passedTests / testSuite.totalTests) * 100).toFixed(1)}%</p>
+                `;
+                
+                html += '<h4>Individual Test Results:</h4><ul>';
+                testSuite.testResults.forEach(result => {
+                    const statusClass = result.status === 'PASSED' ? 'success' : 'error';
+                    const statusIcon = result.status === 'PASSED' ? '✅' : '❌';
+                    html += `<li class="${statusClass}">${statusIcon} ${result.name}</li>`;
+                });
+                html += '</ul>';
+                
+                results.innerHTML = html;
+                
+            } catch (error) {
+                results.innerHTML = `<p class="error">❌ Test suite failed: ${error.message}</p>`;
+                console.error('Test suite error:', error);
+            }
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkCompatibility();
+            console.log('ESC/POS test page loaded');
+            console.log('Available classes:', {
+                ESCPOSCommands: typeof ESCPOSCommands,
+                LocalPrintManager: typeof LocalPrintManager,
+                ESCPOSTestSuite: typeof ESCPOSTestSuite
+            });
+        });
+    </script>
+</body>
+</html>

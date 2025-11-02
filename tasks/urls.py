@@ -22,6 +22,7 @@ urlpatterns = [
         views.task_toggle_done,
         name='task_toggle_done'),
     path('tasks/print/<int:task_id>/', views.task_print, name='task_print'),
+    path('tasks/generate-escpos-graphics/', views.generate_escpos_graphics, name='generate_escpos_graphics'),
     path('tasks/today/', views.todays_tasks, name='todays_tasks'),
     path('tasks/today/print/', views.print_todays_tasks, name='print_todays_tasks'),
 ]

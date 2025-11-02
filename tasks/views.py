@@ -4,13 +4,16 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.conf import settings
 import time
+import json
+import base64
 from .models import Task, PrintLog
 from .forms import TaskForm
-from .print_utils import print_task
+from .print_utils import print_task, create_task_image, convert_image_to_bitmap_escp, convert_image_to_escp, convert_task_to_text_escp, get_task_hierarchy
 from .periodic_utils import (
     generate_periodic_task_instances,
     update_periodic_task_instances,
@@ -938,3 +941,157 @@ def print_todays_tasks(request):
             'message': f'Error printing today\'s tasks: {str(e)}',
             'print_method': 'server'
         })
+
+
+@require_POST
+@login_required
+def generate_escpos_graphics(request):
+    """
+    Generate ESC/POS graphics commands using server-side print_utils.py
+    
+    This endpoint leverages the existing high-quality graphics generation
+    from print_utils.py and returns the ESC/POS command data as base64
+    for local printing via WebUSB/WebSerial.
+    
+    Request format:
+    {
+        "task": {
+            "id": 123,
+            "title": "Task title",
+            "description": "Task description",
+            "urgency": "normal",
+            "due_date": "2024-11-02T10:00:00Z",
+            "created_at": "2024-11-01T09:00:00Z",
+            "hierarchy": ["Parent Task", "Current Task"]
+        },
+        "options": {
+            "use_graphics": true,
+            "format": "bitmap"  // or "simple"
+        }
+    }
+    
+    Response format:
+    {
+        "success": true,
+        "escpos_data": "base64_encoded_escpos_commands",
+        "format": "bitmap",
+        "byte_count": 12345
+    }
+    """
+    try:
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Invalid JSON: {str(e)}'
+            }, status=400)
+        
+        # Validate request structure
+        if 'task' not in data:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing task data'
+            }, status=400)
+        
+        task_data = data['task']
+        options = data.get('options', {})
+        
+        # Validate required task fields
+        required_fields = ['title']
+        for field in required_fields:
+            if field not in task_data:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Missing required task field: {field}'
+                }, status=400)
+        
+        # Create a mock task object for print_utils.py
+        class MockTask:
+            def __init__(self, task_data):
+                self.id = task_data.get('id', 0)
+                self.title = task_data['title']
+                self.description = task_data.get('description', '')
+                self.urgency = task_data.get('urgency', 'normal')
+                self.due_date = None
+                self.created_at = timezone.now()
+                
+                # Parse due_date if provided
+                if task_data.get('due_date'):
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        self.due_date = parse_datetime(task_data['due_date'])
+                    except:
+                        pass
+                
+                # Parse created_at if provided
+                if task_data.get('created_at'):
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        parsed_date = parse_datetime(task_data['created_at'])
+                        if parsed_date:
+                            self.created_at = parsed_date
+                    except:
+                        pass
+                
+                # Set hierarchy for get_task_hierarchy function
+                self._hierarchy = task_data.get('hierarchy', [self.title])
+        
+        # Create mock task
+        mock_task = MockTask(task_data)
+        
+        # Override get_task_hierarchy to use provided hierarchy
+        def mock_get_task_hierarchy(task):
+            return task._hierarchy
+        
+        # Temporarily replace the hierarchy function
+        original_get_task_hierarchy = get_task_hierarchy
+        import tasks.print_utils
+        tasks.print_utils.get_task_hierarchy = mock_get_task_hierarchy
+        
+        try:
+            # Generate graphics using existing print_utils.py
+            use_graphics = options.get('use_graphics', True)
+            format_type = options.get('format', 'bitmap')  # 'bitmap' or 'simple'
+            
+            if use_graphics:
+                # Create image using existing function
+                image = create_task_image(mock_task)
+                
+                # Convert to ESC/POS commands
+                if format_type == 'bitmap':
+                    escpos_data = convert_image_to_bitmap_escp(image)
+                else:  # simple/8-dot graphics
+                    escpos_data = convert_image_to_escp(image)
+            else:
+                # Use text mode
+                escpos_data = convert_task_to_text_escp(mock_task)
+            
+            # Encode as base64 for JSON transport
+            encoded_data = base64.b64encode(escpos_data).decode('utf-8')
+            
+            return JsonResponse({
+                'success': True,
+                'escpos_data': encoded_data,
+                'format': format_type if use_graphics else 'text',
+                'byte_count': len(escpos_data),
+                'image_width': image.width if use_graphics else None,
+                'image_height': image.height if use_graphics else None
+            })
+            
+        finally:
+            # Restore original function
+            tasks.print_utils.get_task_hierarchy = original_get_task_hierarchy
+    
+    except Exception as e:
+        # Log the error for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in generate_escpos_graphics: {error_details}")
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'Graphics generation failed: {str(e)}',
+            'details': error_details if settings.DEBUG else None
+        }, status=500)
