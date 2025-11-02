@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.db import models
-from .models import Task, MaintenanceLog, UserProfile
+from .models import Task, MaintenanceLog, UserProfile, PrintLog
 
 
 @admin.register(Task)
@@ -405,14 +405,14 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_display = [
         'user',
         'printing_method',
-        'local_printing_enabled',
+        'server_printing_enabled',
         'has_local_printer',
         'created_at',
         'updated_at'
     ]
     list_filter = [
         'printing_method',
-        'local_printing_enabled',
+        'server_printing_enabled',
         'created_at'
     ]
     search_fields = ['user__username', 'user__email']
@@ -423,7 +423,7 @@ class UserProfileAdmin(admin.ModelAdmin):
             'fields': ('user',)
         }),
         ('Printing Preferences', {
-            'fields': ('printing_method', 'local_printing_enabled'),
+            'fields': ('printing_method', 'server_printing_enabled'),
             'description': 'Configure how this user prefers to print tasks'
         }),
         ('Local Printer Configuration', {
@@ -448,3 +448,131 @@ class UserProfileAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queries by selecting related user"""
         return super().get_queryset(request).select_related('user')
+
+
+@admin.register(PrintLog)
+class PrintLogAdmin(admin.ModelAdmin):
+    list_display = [
+        'timestamp',
+        'user',
+        'print_method',
+        'print_type',
+        'success_indicator',
+        'tasks_attempted',
+        'tasks_successful',
+        'success_rate_display',
+        'duration_display',
+        'task_link'
+    ]
+    list_filter = [
+        'success',
+        'print_method',
+        'print_type',
+        'timestamp',
+        ('user', admin.RelatedOnlyFieldListFilter),
+    ]
+    search_fields = ['user__username', 'task__title', 'error_message']
+    readonly_fields = [
+        'timestamp',
+        'duration_ms',
+        'success_rate_display',
+        'print_settings_display',
+        'printer_config_display'
+    ]
+    date_hierarchy = 'timestamp'
+    ordering = ['-timestamp']
+    
+    fieldsets = (
+        ('Print Operation', {
+            'fields': ('user', 'task', 'print_method', 'print_type', 'timestamp')
+        }),
+        ('Results', {
+            'fields': ('success', 'tasks_attempted', 'tasks_successful', 'success_rate_display', 'duration_ms')
+        }),
+        ('Error Information', {
+            'fields': ('error_message',),
+            'classes': ('collapse',)
+        }),
+        ('Technical Details', {
+            'fields': ('print_settings_display', 'printer_config_display'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def success_indicator(self, obj):
+        """Visual indicator for success/failure"""
+        if obj.success:
+            return format_html('<span style="color: green; font-weight: bold;">✅ Success</span>')
+        else:
+            return format_html('<span style="color: red; font-weight: bold;">❌ Failed</span>')
+    success_indicator.short_description = 'Status'
+    success_indicator.admin_order_field = 'success'
+
+    def success_rate_display(self, obj):
+        """Display success rate as percentage"""
+        rate = obj.success_rate()
+        if rate == 100:
+            color = 'green'
+        elif rate >= 50:
+            color = 'orange'
+        else:
+            color = 'red'
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}%</span>',
+            color,
+            rate
+        )
+    success_rate_display.short_description = 'Success Rate'
+
+    def duration_display(self, obj):
+        """Display duration in human-readable format"""
+        if obj.duration_ms is None:
+            return '-'
+        
+        if obj.duration_ms < 1000:
+            return f"{obj.duration_ms}ms"
+        elif obj.duration_ms < 60000:
+            return f"{obj.duration_ms / 1000:.1f}s"
+        else:
+            minutes = obj.duration_ms // 60000
+            seconds = (obj.duration_ms % 60000) // 1000
+            return f"{minutes}m {seconds}s"
+    duration_display.short_description = 'Duration'
+    duration_display.admin_order_field = 'duration_ms'
+
+    def task_link(self, obj):
+        """Link to the related task if it exists"""
+        if obj.task:
+            url = reverse('admin:tasks_task_change', args=[obj.task.pk])
+            return format_html('<a href="{}">{}</a>', url, obj.task.title[:50])
+        return '-'
+    task_link.short_description = 'Task'
+    task_link.admin_order_field = 'task__title'
+
+    def print_settings_display(self, obj):
+        """Display print settings in a readable format"""
+        if not obj.print_settings:
+            return 'No settings recorded'
+        
+        settings_html = '<ul>'
+        for key, value in obj.print_settings.items():
+            settings_html += f'<li><strong>{key}:</strong> {value}</li>'
+        settings_html += '</ul>'
+        return format_html(settings_html)
+    print_settings_display.short_description = 'Print Settings'
+
+    def printer_config_display(self, obj):
+        """Display printer configuration in a readable format"""
+        if not obj.printer_config:
+            return 'No configuration recorded'
+        
+        config_html = '<ul>'
+        for key, value in obj.printer_config.items():
+            config_html += f'<li><strong>{key}:</strong> {value}</li>'
+        config_html += '</ul>'
+        return format_html(config_html)
+    printer_config_display.short_description = 'Printer Configuration'
+
+    def get_queryset(self, request):
+        """Optimize queries by selecting related objects"""
+        return super().get_queryset(request).select_related('user', 'task')

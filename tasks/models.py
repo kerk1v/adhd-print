@@ -439,6 +439,96 @@ class MaintenanceLog(models.Model):
             self.instances_created} instances created"
 
 
+class PrintLog(models.Model):
+    """
+    Log entries for print operations for troubleshooting and history tracking
+    """
+    PRINT_METHODS = [
+        ('server', 'Server-based Printing'),
+        ('local', 'Local Printing (USB/Serial)'),
+    ]
+    
+    PRINT_TYPES = [
+        ('single_task', 'Single Task'),
+        ('task_hierarchy', 'Task with Subtasks'),
+        ('todays_tasks', "Today's Tasks"),
+        ('bulk_print', 'Bulk Print Operation'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        help_text="User who initiated the print operation"
+    )
+    task = models.ForeignKey(
+        'Task',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Primary task being printed (if applicable)"
+    )
+    print_method = models.CharField(
+        max_length=10,
+        choices=PRINT_METHODS,
+        help_text="Method used for printing"
+    )
+    print_type = models.CharField(
+        max_length=15,
+        choices=PRINT_TYPES,
+        help_text="Type of print operation"
+    )
+    success = models.BooleanField(
+        default=True,
+        help_text="Whether the print operation was successful"
+    )
+    tasks_attempted = models.IntegerField(
+        default=1,
+        help_text="Number of tasks attempted to print"
+    )
+    tasks_successful = models.IntegerField(
+        default=0,
+        help_text="Number of tasks successfully printed"
+    )
+    error_message = models.TextField(
+        blank=True,
+        help_text="Error message if print failed"
+    )
+    printer_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Printer configuration at time of print (for debugging)"
+    )
+    print_settings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Print settings used (graphics mode, paper size, etc.)"
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    duration_ms = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="Print operation duration in milliseconds"
+    )
+
+    class Meta:
+        ordering = ['-timestamp']
+        verbose_name = 'Print Log'
+        verbose_name_plural = 'Print Logs'
+
+    def __str__(self):
+        status = "✅" if self.success else "❌"
+        method = self.get_print_method_display()
+        task_info = f" - {self.task.title}" if self.task else ""
+        timestamp_str = self.timestamp.strftime('%Y-%m-%d %H:%M') if self.timestamp else "Unsaved"
+        return f"{status} {timestamp_str} [{method}] {self.get_print_type_display()}{task_info}"
+
+    def success_rate(self):
+        """Calculate success rate as percentage"""
+        if self.tasks_attempted == 0:
+            return 0
+        return round((self.tasks_successful / self.tasks_attempted) * 100, 1)
+
+
 class UserProfile(models.Model):
     """
     User profile with printing preferences and settings
@@ -456,7 +546,7 @@ class UserProfile(models.Model):
     printing_method = models.CharField(
         max_length=10,
         choices=PRINTING_METHODS,
-        default='server',
+        default='local',
         help_text="Preferred printing method"
     )
     preferred_local_printer = models.JSONField(
@@ -469,9 +559,9 @@ class UserProfile(models.Model):
         blank=True,
         help_text="General printer settings (paper size, quality, etc.)"
     )
-    local_printing_enabled = models.BooleanField(
+    server_printing_enabled = models.BooleanField(
         default=False,
-        help_text="Whether local printing is available for this user"
+        help_text="Whether server-based printing is available for this user"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -488,10 +578,10 @@ class UserProfile(models.Model):
         Determine the actual printing method to use based on user preference
         and system capabilities
         """
-        if self.printing_method == 'local' and self.local_printing_enabled:
-            return 'local'
-        else:
+        if self.printing_method == 'server' and self.server_printing_enabled:
             return 'server'
+        else:
+            return 'local'
 
     def has_local_printer_configured(self):
         """Check if user has a local printer configured"""

@@ -44,6 +44,11 @@ class PrintUtilsTestCase(TestCase):
             password='testpass123'
         )
         
+        # Enable server printing for testing
+        self.user.profile.printing_method = 'server'
+        self.user.profile.server_printing_enabled = True
+        self.user.profile.save()
+        
         # Create test tasks with hierarchy
         self.parent_task = Task.objects.create(
             title='Parent Task',

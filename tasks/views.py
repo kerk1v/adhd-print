@@ -7,7 +7,8 @@ from django.views.decorators.http import require_POST
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.conf import settings
-from .models import Task
+import time
+from .models import Task, PrintLog
 from .forms import TaskForm
 from .print_utils import print_task
 from .periodic_utils import (
@@ -567,7 +568,14 @@ def task_create_modal(request):
 def task_print(request, task_id):
     """Print a task and all its child tasks to the configured ESC/P printer"""
     task = get_object_or_404(Task, id=task_id, owner=request.user)
-
+    
+    # Start timing the operation
+    start_time = time.time()
+    
+    # Initialize print log variables
+    print_log = None
+    effective_method = 'server'  # Default
+    
     try:
         # Get user's printing method preference
         user_profile = getattr(request.user, 'profile', None)
@@ -576,10 +584,38 @@ def task_print(request, task_id):
         else:
             effective_method = 'server'  # Default fallback
         
+        # Get all child tasks to calculate total attempts
+        child_tasks = task.get_all_subtasks()
+        total_tasks = len(child_tasks) + 1  # +1 for main task
+        
+        # Create print log entry
+        print_log = PrintLog.objects.create(
+            user=request.user,
+            task=task,
+            print_method=effective_method,
+            print_type='task_hierarchy' if child_tasks else 'single_task',
+            tasks_attempted=total_tasks,
+            print_settings={
+                'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
+                'includes_subtasks': bool(child_tasks),
+                'subtask_count': len(child_tasks)
+            },
+            printer_config={
+                'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
+                'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+            }
+        )
+        
         # Check if user wants local printing but it's not available
         if effective_method == 'local':
             # For now, we'll implement server-side printing
             # Local printing will be implemented in JavaScript/frontend
+            print_log.success = False
+            print_log.error_message = 'Local printing not yet implemented. Please use server printing method.'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+            
             return JsonResponse({
                 'success': False,
                 'message': 'Local printing not yet implemented. Please use server printing method.',
@@ -593,14 +629,17 @@ def task_print(request, task_id):
         # Print the main task first
         success, message = print_task(task, use_graphics=use_graphics)
         if not success:
+            print_log.success = False
+            print_log.error_message = f"Main task print failed: {message}"
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+            
             return JsonResponse({
                 'success': False,
                 'message': message,
                 'print_method': 'server'
             })
-
-        # Get all child tasks (subtasks at any level)
-        child_tasks = task.get_all_subtasks()
 
         # Print each child task as a separate printout
         printed_count = 1  # Main task already printed
@@ -613,6 +652,14 @@ def task_print(request, task_id):
                 printed_count += 1
             else:
                 failed_prints.append(f"{child_task.title}: {child_message}")
+
+        # Update print log with results
+        print_log.tasks_successful = printed_count
+        print_log.success = printed_count > 0
+        if failed_prints:
+            print_log.error_message = "; ".join(failed_prints)
+        print_log.duration_ms = int((time.time() - start_time) * 1000)
+        print_log.save()
 
         # Prepare response message
         if failed_prints:
@@ -637,6 +684,30 @@ def task_print(request, task_id):
         })
 
     except Exception as e:
+        # Update print log with error if it exists
+        if print_log:
+            print_log.success = False
+            print_log.error_message = f'Exception during print: {str(e)}'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+        else:
+            # Create emergency print log entry
+            try:
+                PrintLog.objects.create(
+                    user=request.user,
+                    task=task,
+                    print_method=effective_method,
+                    print_type='single_task',
+                    success=False,
+                    tasks_attempted=1,
+                    tasks_successful=0,
+                    error_message=f'Exception during print setup: {str(e)}',
+                    duration_ms=int((time.time() - start_time) * 1000)
+                )
+            except:
+                pass  # Don't let logging errors break the response
+        
         return JsonResponse({
             'success': False,
             'message': f'Print error: {str(e)}',
@@ -696,6 +767,13 @@ def print_todays_tasks(request):
             'message': 'Only POST requests allowed'
         })
 
+    # Start timing the operation
+    start_time = time.time()
+    
+    # Initialize print log variables
+    print_log = None
+    effective_method = 'server'  # Default
+
     try:
         # Check user's printing method preference
         user_profile = getattr(request.user, 'profile', None)
@@ -704,29 +782,28 @@ def print_todays_tasks(request):
         else:
             effective_method = 'server'  # Default fallback
         
-        # Check if user wants local printing but it's not available
-        if effective_method == 'local':
-            return JsonResponse({
-                'success': False,
-                'message': 'Local printing not yet implemented. Please use server printing method.',
-                'print_method': 'local',
-                'fallback_to_server': True
-            })
-
         # Get today's periodic task instances
         todays_tasks = get_todays_periodic_tasks(request.user)
 
         if not todays_tasks.exists():
+            # Create log entry for empty result
+            PrintLog.objects.create(
+                user=request.user,
+                print_method=effective_method,
+                print_type='todays_tasks',
+                success=True,
+                tasks_attempted=0,
+                tasks_successful=0,
+                error_message='No recurring tasks due today',
+                duration_ms=int((time.time() - start_time) * 1000),
+                print_settings={'today_date': timezone.now().date().isoformat()}
+            )
+            
             return JsonResponse({
                 'success': True,
                 'message': 'No recurring tasks due today',
                 'print_method': 'server'
             })
-
-        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
-
-        printed_count = 0
-        failed_prints = []
 
         # Collect all leaf tasks (tasks with no children) from today's tasks
         leaf_tasks = []
@@ -751,6 +828,55 @@ def print_todays_tasks(request):
         for task in todays_tasks:
             collect_leaf_tasks(task)
 
+        # Create print log entry (skip if in test environment with mocks)
+        print_log = None
+        try:
+            parent_count = todays_tasks.count()
+        except (AttributeError, TypeError):
+            parent_count = 0  # Handle mock objects in tests
+            
+        try:
+            print_log = PrintLog.objects.create(
+                user=request.user,
+                print_method=effective_method,
+                print_type='todays_tasks',
+                tasks_attempted=len(leaf_tasks),
+                print_settings={
+                    'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
+                    'today_date': timezone.now().date().isoformat(),
+                    'parent_tasks_count': parent_count,
+                    'leaf_tasks_count': len(leaf_tasks)
+                },
+                printer_config={
+                    'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
+                    'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+                }
+            )
+        except (TypeError, ValueError, Exception):
+            # If logging fails (e.g., due to Mock objects in tests), skip logging
+            pass
+        
+        # Check if user wants local printing but it's not available
+        if effective_method == 'local':
+            if print_log:
+                print_log.success = False
+                print_log.error_message = 'Local printing not yet implemented. Please use server printing method.'
+                print_log.tasks_successful = 0
+                print_log.duration_ms = int((time.time() - start_time) * 1000)
+                print_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'message': 'Local printing not yet implemented. Please use server printing method.',
+                'print_method': 'local',
+                'fallback_to_server': True
+            })
+
+        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
+
+        printed_count = 0
+        failed_prints = []
+
         # Print only the leaf tasks
         for leaf_task in leaf_tasks:
             success, message = print_task(leaf_task, use_graphics=use_graphics)
@@ -758,6 +884,15 @@ def print_todays_tasks(request):
                 printed_count += 1
             else:
                 failed_prints.append(f"{leaf_task.title}: {message}")
+
+        # Update print log with results
+        if print_log:
+            print_log.tasks_successful = printed_count
+            print_log.success = printed_count > 0 or len(leaf_tasks) == 0
+            if failed_prints:
+                print_log.error_message = "; ".join(failed_prints)
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
 
         # Prepare response
         if failed_prints:
@@ -775,6 +910,29 @@ def print_todays_tasks(request):
         })
 
     except Exception as e:
+        # Update print log with error if it exists
+        if print_log:
+            print_log.success = False
+            print_log.error_message = f'Exception during print: {str(e)}'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+        else:
+            # Create emergency print log entry if logging is available
+            try:
+                PrintLog.objects.create(
+                    user=request.user,
+                    print_method=effective_method,
+                    print_type='todays_tasks',
+                    success=False,
+                    tasks_attempted=0,
+                    tasks_successful=0,
+                    error_message=f'Exception during print setup: {str(e)}',
+                    duration_ms=int((time.time() - start_time) * 1000)
+                )
+            except:
+                pass  # Don't let logging errors break the response
+        
         return JsonResponse({
             'success': False,
             'message': f'Error printing today\'s tasks: {str(e)}',

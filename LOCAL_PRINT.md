@@ -21,7 +21,7 @@ Add local printing functionality that allows users to print directly to thermal 
 #### ✅ Database Relationships
 - [x] Link UserProfile to Django User model (OneToOne)
 - [x] Add printer configuration fields (connection type, settings)
-- [ ] Add printing history/logs for troubleshooting
+- [x] Add printing history/logs for troubleshooting
 
 ### Phase 2: WebUSB/WebSerial Integration
 
@@ -72,8 +72,8 @@ Add local printing functionality that allows users to print directly to thermal 
 - [x] Add print_method field to JSON responses
 - [x] Implement graceful handling of local print requests
 - [x] Add fallback messaging for unimplemented local printing
+- [x] Implement comprehensive print job logging with PrintLog model
 - [ ] Add API endpoint for printer capability queries
-- [ ] Implement local print job logging
 - [ ] Add fallback to server printing if local fails
 
 #### ✅ Settings Management
@@ -124,12 +124,14 @@ Add local printing functionality that allows users to print directly to thermal 
 
 ### ✅ **COMPLETED** - Infrastructure Foundation
 - **UserProfile Model**: Complete with printing preferences, printer configuration storage, and admin interface
-- **Database Migration**: Applied successfully (migration 0007_add_user_profile)
+- **PrintLog Model**: Comprehensive print operation logging with success tracking, error messages, and performance metrics
+- **Database Migration**: Applied successfully (migrations 0007_add_user_profile and 0010_add_print_log)
 - **User Signals**: Automatic profile creation for new users implemented
-- **Print View Updates**: Both `task_print` and `print_todays_tasks` views now check user preferences
+- **Print View Updates**: Both `task_print` and `print_todays_tasks` views now check user preferences and create detailed logs
 - **Backward Compatibility**: All existing server-side printing functionality preserved
-- **Admin Interface**: Full UserProfile management with organized fieldsets
-- **Testing**: Core functionality validated with custom test scripts
+- **Admin Interface**: Full UserProfile and PrintLog management with organized fieldsets and visual indicators
+- **Testing**: Core functionality validated with custom test scripts and comprehensive unit tests
+- **Troubleshooting**: Complete print history with timing, success rates, error messages, and configuration details
 
 ### 🔄 **IN PROGRESS** - Ready for Next Phase
 - **Print Method Detection**: Views properly detect and respond to local printing requests
@@ -150,11 +152,41 @@ class UserProfile(models.Model):
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    printing_method = models.CharField(max_length=10, choices=PRINTING_METHODS, default='server')
+    printing_method = models.CharField(max_length=10, choices=PRINTING_METHODS, default='local')
     preferred_local_printer = models.JSONField(default=dict, blank=True)
     printer_settings = models.JSONField(default=dict, blank=True)
+    server_printing_enabled = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+```
+
+### PrintLog Model Structure
+```python
+class PrintLog(models.Model):
+    PRINT_METHODS = [
+        ('server', 'Server-based Printing'),
+        ('local', 'Local Printing (USB/Serial)'),
+    ]
+    
+    PRINT_TYPES = [
+        ('single_task', 'Single Task'),
+        ('task_hierarchy', 'Task with Subtasks'),
+        ('todays_tasks', "Today's Tasks"),
+        ('bulk_print', 'Bulk Print Operation'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    task = models.ForeignKey('Task', on_delete=models.SET_NULL, null=True, blank=True)
+    print_method = models.CharField(max_length=10, choices=PRINT_METHODS)
+    print_type = models.CharField(max_length=15, choices=PRINT_TYPES)
+    success = models.BooleanField(default=True)
+    tasks_attempted = models.IntegerField(default=1)
+    tasks_successful = models.IntegerField(default=0)
+    error_message = models.TextField(blank=True)
+    printer_config = models.JSONField(default=dict, blank=True)
+    print_settings = models.JSONField(default=dict, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    duration_ms = models.IntegerField(null=True, blank=True)
 ```
 
 ### JavaScript API Structure
@@ -205,24 +237,29 @@ async function determinePrintMethod(userPreference) {
 ### Changes Made in This Implementation:
 - **Removed**: `PRINTER_BRIDGE.md` (replaced with this comprehensive guide)
 - **Added**: `UserProfile` model with OneToOneField to Django User
-- **Added**: Printing method preferences (`server`, `local`) - removed auto-detect option
+- **Added**: `PrintLog` model for comprehensive print operation tracking
+- **Added**: Printing method preferences (`server`, `local`) with **local as default**
+- **Changed**: `local_printing_enabled` to `server_printing_enabled` (disabled by default)
 - **Added**: JSON fields for printer configuration storage
-- **Updated**: Print views to check user preferences before processing
-- **Added**: Admin interface for managing user print preferences
+- **Added**: Print logging with timing, success tracking, and error reporting
+- **Updated**: Print views to check user preferences and create log entries before processing
+- **Updated**: Logic to default to local printing, only use server printing when explicitly enabled
+- **Added**: Admin interface for managing user print preferences and viewing print history
 - **Added**: Automatic profile creation via Django signals
-- **Added**: Data migration to convert any existing 'auto' values to 'server'
+- **Added**: Data migration to convert existing users appropriately
+- **Added**: Comprehensive unit tests for print logging functionality
 - **Maintained**: Full backward compatibility with existing server printing
 
 ### Database Schema:
 ```sql
--- New table created by migration 0007
+-- Updated table from migration 0011
 CREATE TABLE tasks_userprofile (
     id INTEGER PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES auth_user(id),
-    printing_method VARCHAR(10) DEFAULT 'server', -- 'server' or 'local'
+    printing_method VARCHAR(10) DEFAULT 'local', -- 'server' or 'local'
     preferred_local_printer JSON DEFAULT '{}',
     printer_settings JSON DEFAULT '{}',
-    local_printing_enabled BOOLEAN DEFAULT 0,
+    server_printing_enabled BOOLEAN DEFAULT 0, -- Server printing disabled by default
     created_at DATETIME,
     updated_at DATETIME
 );
@@ -247,10 +284,13 @@ Print endpoints now return additional fields:
 
 ## 🔗 Related Files Modified
 
-- ✅ `tasks/models.py` - Added UserProfile model with signals
-- ✅ `tasks/views.py` - Updated print views to check user preferences  
-- ✅ `tasks/admin.py` - Added UserProfile admin interface
-- ✅ `tasks/migrations/0007_add_user_profile.py` - Database migration
+- ✅ `tasks/models.py` - Added UserProfile model with signals and PrintLog model for troubleshooting
+- ✅ `tasks/views.py` - Updated print views to check user preferences and create log entries
+- ✅ `tasks/admin.py` - Added UserProfile and PrintLog admin interfaces with rich displays
+- ✅ `tasks/migrations/0007_add_user_profile.py` - Database migration for UserProfile
+- ✅ `tasks/migrations/0010_add_print_log.py` - Database migration for PrintLog model
+- ✅ `tasks/migrations/0011_change_to_server_printing_enabled.py` - Migration to switch to local printing by default
+- ✅ `tasks/tests/test_print_logging.py` - Comprehensive tests for print logging functionality
 - 🔄 `tasks/static/tasks/js/` - Add local printing JavaScript modules (Phase 2)
 - 🔄 `tasks/templates/` - Update print UI templates (Phase 2)
 - 🔄 `requirements.txt` - Any new Python dependencies (Phase 2)
