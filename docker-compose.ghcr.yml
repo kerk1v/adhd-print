@@ -16,7 +16,7 @@ services:
       # === Django Configuration ===
       - DJANGO_SETTINGS_MODULE=adhd_print_project.settings
       # Production security variables are read from .env file:
-      # SECRET_KEY, DEBUG, ALLOWED_HOSTS
+      # SECRET_KEY, DEBUG, ALLOWED_HOSTS, CSRF_TRUSTED_ORIGINS
       
       # === ASGI Server Configuration ===
       - ASGI_HOST=0.0.0.0

@@ -181,3 +181,34 @@ BACKGROUND_JOBS_ENABLED = os.environ.get(
         'true', '1', 'yes', 'on')
 MAINTENANCE_SCHEDULE_HOUR = int(os.environ.get('MAINTENANCE_SCHEDULE_HOUR', '2'))
 MAINTENANCE_SCHEDULE_MINUTE = int(os.environ.get('MAINTENANCE_SCHEDULE_MINUTE', '0'))
+
+# CSRF Configuration for Docker and Production
+# Trust the X-Forwarded-Proto header from reverse proxies
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# CSRF trusted origins - include your domain(s)
+CSRF_TRUSTED_ORIGINS_ENV = os.environ.get('CSRF_TRUSTED_ORIGINS', '')
+if CSRF_TRUSTED_ORIGINS_ENV:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in CSRF_TRUSTED_ORIGINS_ENV.split(',') if origin.strip()]
+else:
+    # Default trusted origins based on ALLOWED_HOSTS
+    CSRF_TRUSTED_ORIGINS = []
+    for host in ALLOWED_HOSTS:
+        if host not in ['testserver', '127.0.0.1', 'localhost']:
+            # Add both http and https variants for external domains
+            CSRF_TRUSTED_ORIGINS.extend([
+                f'http://{host}',
+                f'https://{host}'
+            ])
+
+# CSRF cookie settings for container environments
+CSRF_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_NAME = 'csrftoken'
+
+# Session settings for container environments  
+SESSION_COOKIE_SECURE = not DEBUG  # Use secure cookies in production
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_AGE = 86400  # 24 hours
