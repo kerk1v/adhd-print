@@ -446,7 +446,6 @@ class UserProfile(models.Model):
     PRINTING_METHODS = [
         ('server', 'Server-based Printing'),
         ('local', 'Local Printing (USB/Serial)'),
-        ('auto', 'Auto-detect Best Method'),
     ]
 
     user = models.OneToOneField(
@@ -491,9 +490,6 @@ class UserProfile(models.Model):
         """
         if self.printing_method == 'local' and self.local_printing_enabled:
             return 'local'
-        elif self.printing_method == 'auto':
-            # In auto mode, prefer local if available, otherwise server
-            return 'local' if self.local_printing_enabled else 'server'
         else:
             return 'server'
 

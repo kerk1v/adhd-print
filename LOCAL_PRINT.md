@@ -12,7 +12,7 @@ Add local printing functionality that allows users to print directly to thermal 
 
 #### ✅ User Profile Model Extension
 - [x] Create UserProfile model with printing method preference
-- [x] Add `printing_method` field with choices: `server`, `local`, `auto`
+- [x] Add `printing_method` field with choices: `server`, `local`
 - [x] Add `preferred_local_printer` field for storing selected printer info
 - [x] Add migration for new UserProfile model
 - [x] Create admin interface for UserProfile management
@@ -147,7 +147,6 @@ class UserProfile(models.Model):
     PRINTING_METHODS = [
         ('server', 'Server-based Printing'),
         ('local', 'Local Printing (USB/Serial)'),
-        ('auto', 'Auto-detect Best Method'),
     ]
     
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -174,8 +173,6 @@ class LocalPrinterManager {
 async function determinePrintMethod(userPreference) {
     if (userPreference === 'local' && await supportsLocalPrinting()) {
         return 'local';
-    } else if (userPreference === 'auto') {
-        return await supportsLocalPrinting() ? 'local' : 'server';
     }
     return 'server';
 }
@@ -208,11 +205,12 @@ async function determinePrintMethod(userPreference) {
 ### Changes Made in This Implementation:
 - **Removed**: `PRINTER_BRIDGE.md` (replaced with this comprehensive guide)
 - **Added**: `UserProfile` model with OneToOneField to Django User
-- **Added**: Printing method preferences (`server`, `local`, `auto`)
+- **Added**: Printing method preferences (`server`, `local`) - removed auto-detect option
 - **Added**: JSON fields for printer configuration storage
 - **Updated**: Print views to check user preferences before processing
 - **Added**: Admin interface for managing user print preferences
 - **Added**: Automatic profile creation via Django signals
+- **Added**: Data migration to convert any existing 'auto' values to 'server'
 - **Maintained**: Full backward compatibility with existing server printing
 
 ### Database Schema:
@@ -221,7 +219,7 @@ async function determinePrintMethod(userPreference) {
 CREATE TABLE tasks_userprofile (
     id INTEGER PRIMARY KEY,
     user_id INTEGER UNIQUE REFERENCES auth_user(id),
-    printing_method VARCHAR(10) DEFAULT 'server',
+    printing_method VARCHAR(10) DEFAULT 'server', -- 'server' or 'local'
     preferred_local_printer JSON DEFAULT '{}',
     printer_settings JSON DEFAULT '{}',
     local_printing_enabled BOOLEAN DEFAULT 0,
