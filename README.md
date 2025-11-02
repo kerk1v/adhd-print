@@ -389,18 +389,18 @@ docker run -d -p 8000:8000 \
 
 #### Available Tags
 
-- `testing` - Latest development build (updated on main branch changes)
+- `testing` - Manual builds via workflow dispatch (amd64 only)
 - `main-<sha>` - Specific commit builds
 - Manual tags via workflow dispatch
 
 #### Building Custom Images
 
-The GitHub Actions workflow supports manual triggers with custom tags:
+The GitHub Actions workflow supports manual builds only:
 
 1. Go to **Actions** → **Build and Push Docker Image**
 2. Click **Run workflow**  
 3. Specify custom tag (defaults to `testing`)
-4. Wait for build completion (~5-10 minutes)
+4. Wait for build completion (~3-5 minutes for amd64)
 
 Each deployment method includes complete instructions, configuration examples, and troubleshooting guidance.
 
