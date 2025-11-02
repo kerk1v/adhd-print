@@ -53,9 +53,9 @@ jobs:
         run: |
           python manage.py check --deploy
 
-      - name: Run migrations (dry run)
+      - name: Check migrations consistency
         run: |
-          python manage.py migrate --check
+          python manage.py makemigrations --check --dry-run
 
       - name: Run tests with coverage
         run: |
