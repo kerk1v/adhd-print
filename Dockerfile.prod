@@ -1,43 +1,63 @@
 # ADHD Print Task Management System - Production Dockerfile
-# Optimized for production deployment with ASGI server
+# Optimized Alpine multi-stage build for production deployment
 
-FROM python:3.13-slim
+# Stage 1: Builder with build dependencies
+FROM python:3.13-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache --virtual .build-deps \
+    build-base \
+    linux-headers \
+    freetype-dev \
+    jpeg-dev \
+    libpng-dev \
+    libffi-dev \
+    openssl-dev \
+    git
+
+# Install Python dependencies in a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# Stage 2: Production runtime with minimal dependencies
+FROM python:3.13-alpine
+
+# Install only runtime dependencies
+RUN apk add --no-cache \
+    bash \
+    freetype \
+    jpeg \
+    libpng \
+    libffi \
+    openssl \
+    fontconfig \
+    ttf-dejavu \
+    ttf-liberation \
+    curl \
+    && apk add --no-cache --repository=http://dl-cdn.alpinelinux.org/alpine/edge/community \
+    font-roboto
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    DJANGO_SETTINGS_MODULE=adhd_print_project.settings
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    libfreetype6-dev \
-    libjpeg-dev \
-    libpng-dev \
-    libffi-dev \
-    libssl-dev \
-    fonts-dejavu-core \
-    fonts-liberation \
-    fonts-roboto \
-    fontconfig \
-    git \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get install -y git 
+    DJANGO_SETTINGS_MODULE=adhd_print_project.settings \
+    PATH="/opt/venv/bin:$PATH" \
+    ASGI_HOST=0.0.0.0
 
 # Create application user
-RUN useradd --create-home --shell /bin/bash --uid 1000 adhd_print
+RUN adduser -D -s /bin/bash -u 1000 adhd_print
 
 # Set work directory
 WORKDIR /app
-
-# Install Python dependencies
-COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY --chown=adhd_print:adhd_print . .
