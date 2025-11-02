@@ -40,6 +40,12 @@ echo "Checking database migrations..."
 python manage.py migrate --no-input --verbosity=0
 echo "Database ready."
 
+# Debug: Show Django configuration (remove in production)
+echo "Django configuration:"
+echo "  DEBUG: ${DEBUG:-default}"
+echo "  ALLOWED_HOSTS: ${ALLOWED_HOSTS:-default}"
+echo "  SECRET_KEY: ${SECRET_KEY:+[SET]}${SECRET_KEY:-[NOT SET]}"
+
 # Check for background jobs
 echo "Starting background jobs system..."
 python manage.py background_jobs status || true

@@ -25,12 +25,17 @@ DATA_DIR.mkdir(exist_ok=True)  # Ensure the data directory exists
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-@7hl1gc!by=rsk4c9c5@woy9ps5f*55lv*4o#)29f9b1wt5&(a'
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY', 
+    'django-insecure-@7hl1gc!by=rsk4c9c5@woy9ps5f*55lv*4o#)29f9b1wt5&(a'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DEBUG', 'True').lower() in ('true', '1', 'yes', 'on')
 
-ALLOWED_HOSTS = ['testserver', '127.0.0.1', 'localhost']
+# Parse ALLOWED_HOSTS from environment variable (comma-separated)
+ALLOWED_HOSTS_ENV = os.environ.get('ALLOWED_HOSTS', 'testserver,127.0.0.1,localhost')
+ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS_ENV.split(',') if host.strip()]
 
 
 # Application definition

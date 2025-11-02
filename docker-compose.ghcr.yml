@@ -15,10 +15,8 @@ services:
     environment:
       # === Django Configuration ===
       - DJANGO_SETTINGS_MODULE=adhd_print_project.settings
-      # Production security (uncomment and set for production)
-      # - SECRET_KEY=your-very-secret-key-here-change-this-in-production
-      # - DEBUG=False
-      # - ALLOWED_HOSTS=your-domain.com,localhost,127.0.0.1
+      # Production security variables are read from .env file:
+      # SECRET_KEY, DEBUG, ALLOWED_HOSTS
       
       # === ASGI Server Configuration ===
       - ASGI_HOST=0.0.0.0
