@@ -241,7 +241,7 @@ This comprehensive user guide will help you effectively use the ADHD Print Task 
 1. **Printer Not Working**
    - Check printer IP address in settings
    - Verify network connection
-   - Try text mode if graphics mode fails
+   - Graphics mode for optimal print quality
    - See [FEATURES.md](FEATURES.md) for detailed printer troubleshooting
 
 2. **Task Organization Confusion**
@@ -264,10 +264,15 @@ This comprehensive user guide will help you effectively use the ADHD Print Task 
 - **Task Urgency Levels**: Critical, Urgent, Normal, and Low priority levels
 - **Due Date Tracking**: Optional due dates with overdue indicators
 - **Task Completion**: Mark tasks as done with status tracking
-- **Thermal Printing**: Print tasks directly to ESC/POS thermal printers (tested with Qian QOP-T80UL-RI-02)
+- **Dual Printing Methods**: 
+  - **🖨️ Local Printing**: Direct browser-to-printer via WebUSB/WebSerial (Chrome/Edge)
+  - **🌐 Server Printing**: Traditional network printer support (all browsers)
+- **Smart Print Fallback**: Automatic fallback from local to server printing
 - **Print Modal**: Automatic "Print this task?" prompt after creating tasks
-- **Material Design Icons**: Visual urgency indicators in printouts
-- **Professional Layout**: High-quality thermal printer output with borders and proper typography
+- **Professional Layout**: High-quality thermal printer output with Material Design icons and borders
+- **Browser Compatibility**: Progressive enhancement with graceful degradation
+- **Print History & Logging**: Comprehensive print operation tracking for troubleshooting
+- **User Preferences**: Configurable printing method selection per user
 - **Configurable Database**: Flexible database location and settings via environment variables
 - **Background Jobs**: Integrated automated maintenance system (no cron setup required)
 - **ASGI Support**: Modern asynchronous deployment for better performance
@@ -375,8 +380,10 @@ The application includes an integrated background job system that automatically 
 ### Quick Links
 - **[🚀 Complete Deployment Guide](DEPLOYMENT.md)** - All deployment options (Docker, ASGI, LXC, traditional)
 - **[🎯 Features Guide](FEATURES.md)** - Complete feature overview including periodic tasks and background jobs  
+- **[🖨️ Local Printing Implementation](LOCAL_PRINT.md)** - Complete local printing documentation and technical details
 - **[🧪 Testing Guide](TESTING_GUIDE.md)** - Comprehensive testing documentation and recent fixes
 - **[⚡ ASGI Setup](ASGI_SETUP.md)** - Modern ASGI deployment for production
+- **[📋 Future Roadmap](TODO.md)** - Upcoming features and development priorities
 
 ### Project Structure
 
@@ -405,9 +412,30 @@ adhd-print/
 
 ## 🖨️ Printing Features
 
-For complete printing system documentation, see **[FEATURES.md](FEATURES.md#advanced-printing-system)**.
+The ADHD Print system now supports **dual printing methods** with smart fallback capabilities:
 
-### Quick Printer Setup
+### **🔥 Local Printing (NEW)**
+- **Direct Browser Connection**: Print directly to USB/Serial thermal printers via WebUSB/WebSerial APIs
+- **No Network Setup**: No need for network printer configuration
+- **Browser Support**: Chrome 89+, Edge 89+ (full features), Opera 75+ (partial)
+- **Auto-Discovery**: Automatic printer detection with vendor filtering
+- **Smart Fallback**: Automatically falls back to server printing if local fails
+
+### **🌐 Server Printing (Traditional)**
+- **Network Printers**: Print to ESC/POS thermal printers over TCP/IP
+- **Universal Browser Support**: Works in all browsers (Firefox, Safari, etc.)
+- **High-Quality Graphics**: Server-side image generation with fonts and icons
+- **Professional Layout**: Bordered output with task hierarchy and urgency indicators
+
+### **⚙️ Technical Capabilities**
+- **ESC/POS Command Generation**: Both client-side and server-side generation
+- **Graphics Mode**: High-quality bitmap printing with Material Design icons
+- **Graphics Mode**: High-quality bitmap printing via server-side generation
+- **Print Logging**: Comprehensive operation history for troubleshooting
+- **User Preferences**: Individual printing method selection
+- **Queue Management**: Background printing with progress tracking
+
+### **🔧 Quick Printer Setup**
 
 Configure your thermal printer settings:
 
@@ -417,16 +445,12 @@ export ADHD_PRINT_PRINTER_PORT=9100
 export ADHD_PRINT_USE_GRAPHICS=True
 ```
 
-### Print Modes
+### **✅ Tested Hardware**
+- **Primary**: Qian QOP-T80UL-RI-02
+- **Compatible**: Most ESC/POS thermal receipt printers (Epson, Star, Citizen)
+- **Connections**: USB, Serial, and Network TCP/IP
 
-- **Graphics Mode**: High-quality bitmap printing with Material Design icons and Roboto fonts
-- **Text Mode**: ASCII fallback for basic printers with automatic fallback
-- **Professional Layout**: Bordered output with task hierarchy and urgency indicators
-
-### Tested Hardware
-- **Qian QOP-T80UL-RI-02** (Primary tested model)
-- **ESC/POS Protocol**: Compatible with most thermal receipt printers
-- **Network Printing**: TCP/IP connection support
+For complete printing system documentation, see **[LOCAL_PRINT.md](LOCAL_PRINT.md)**.
 
 ## Configuration
 

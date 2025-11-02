@@ -9,7 +9,6 @@
 # Documentation
 *.md
 docs/
-*.txt
 *.rst
 
 # Development files

@@ -18,11 +18,20 @@ from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
 
-# Import debug view
-import sys
-sys.path.append('/Users/volker/adhd-print')
-from debug_print_view import debug_print_modal
-from auth_check_view import auth_check, auth_check_public
+# Import debug views only if they exist (development only)
+debug_print_modal = None
+auth_check_public = None
+try:
+    import sys
+    import os
+    # Try to add the project root directory to the path
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.append(project_root)
+    from debug_print_view import debug_print_modal
+    from auth_check_view import auth_check, auth_check_public
+except (ImportError, ModuleNotFoundError):
+    # Debug modules not available in production
+    pass
 
 # Customize admin site
 admin.site.site_header = "Task Management Admin"
@@ -47,14 +56,13 @@ urlpatterns = [
         'admin/',
         admin.site.urls),
     path(
-        'debug-print/',
-        debug_print_modal,
-        name='debug_print'),
-    path(
-        'auth-check/',
-        auth_check_public,
-        name='auth_check'),
-    path(
         '',
         include('tasks.urls')),
 ]
+
+# Add debug URLs only if debug views are available (development only)
+if debug_print_modal is not None:
+    urlpatterns.append(path('debug-print/', debug_print_modal, name='debug_print'))
+    
+if auth_check_public is not None:
+    urlpatterns.append(path('auth-check/', auth_check_public, name='auth_check'))

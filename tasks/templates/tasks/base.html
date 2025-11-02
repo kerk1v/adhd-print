@@ -22,6 +22,9 @@
                     <a class="nav-link" href="{% url 'todays_tasks' %}">
                         <i class="fas fa-calendar-day me-1"></i>Today's Tasks
                     </a>
+                    <a class="nav-link" href="{% url 'user_profile' %}">
+                        <i class="fas fa-user-cog me-1"></i>Profile
+                    </a>
                     <a class="nav-link" href="/admin/">Admin</a>
                     <form method="post" action="/admin/logout/" class="d-inline-flex align-items-center" style="margin: 0;">
                         {% csrf_token %}
@@ -52,6 +55,10 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     {% load static %}
     <script src="{% static 'tasks/js/common.js' %}"></script>
+    <script src="{% static 'tasks/js/local-printing-support.js' %}"></script>
+    <script src="{% static 'tasks/js/local-printer-communication.js' %}"></script>
+    <script src="{% static 'tasks/js/escpos-commands.js' %}"></script>
+    <script src="{% static 'tasks/js/local-print-integration.js' %}"></script>
     <script src="{% static 'tasks/js/print-modal.js' %}"></script>
     
     {% block scripts %}

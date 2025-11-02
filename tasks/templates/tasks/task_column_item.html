@@ -36,7 +36,7 @@
                 <i class="fas fa-edit"></i>
             </button>
             <button type="button" class="btn btn-outline-success btn-sm" title="Print"
-                    onclick="showPrintConfirmModal({{ task.id }})">
+                    onclick="showPrintConfirmModal({{ task.id }}, '{{ task.title|escapejs }}')">
                 <i class="fas fa-print"></i>
             </button>
             <button type="button" class="btn btn-outline-danger btn-sm" title="Delete" 

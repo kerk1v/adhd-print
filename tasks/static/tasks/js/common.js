@@ -234,13 +234,18 @@ $(document).ready(function() {
     initializePopovers();
     setupKeyboardShortcuts();
     
-    // Add loading states to buttons (except logout forms)
+    // Add loading states to buttons (except logout forms and profile forms)
     $(document).on('click', '.btn[type="submit"]:not([form*="logout"]):not(form[action*="logout"] .btn)', function() {
         const btn = $(this);
         const form = btn.closest('form');
         
         // Skip if this is a logout form
         if (form.attr('action') && form.attr('action').includes('logout')) {
+            return true; // Allow normal form submission
+        }
+        
+        // Skip if this is a profile form (they handle their own loading states)
+        if (form.attr('id') === 'profile-form') {
             return true; // Allow normal form submission
         }
         

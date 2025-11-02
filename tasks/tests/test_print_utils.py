@@ -14,6 +14,7 @@ This module tests all printing functionality including:
 import unittest.mock
 import socket
 import os
+import unittest
 from datetime import datetime, timedelta
 from PIL import Image, ImageDraw, ImageFont
 from django.test import TestCase, override_settings
@@ -28,7 +29,6 @@ from tasks.print_utils import (
     create_task_image,
     convert_image_to_escp,
     convert_image_to_bitmap_escp,
-    convert_task_to_text_escp,
     print_task,
 )
 
@@ -43,6 +43,11 @@ class PrintUtilsTestCase(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        
+        # Enable server printing for testing
+        self.user.profile.printing_method = 'server'
+        self.user.profile.server_printing_enabled = True
+        self.user.profile.save()
         
         # Create test tasks with hierarchy
         self.parent_task = Task.objects.create(
@@ -302,116 +307,12 @@ class EscPosConversionTests(PrintUtilsTestCase):
         
         self.assertIsInstance(escp_data, bytes)
         self.assertGreater(len(escp_data), 0)
-        # Check for ESC/POS initialization
+                # Check for ESC/POS initialization
         self.assertIn(b'\x1B\x40', escp_data)  # ESC @
         # Check for bitmap command
         self.assertIn(b'\x1D\x76\x30\x00', escp_data)  # GS v 0 0
         # Check for cut command
         self.assertIn(b'\x1D\x56\x00', escp_data)  # GS V 0
-
-    def test_convert_task_to_text_escp(self):
-        """Test text-only ESC/POS conversion."""
-        escp_data = convert_task_to_text_escp(self.parent_task)
-        
-        self.assertIsInstance(escp_data, bytes)
-        self.assertGreater(len(escp_data), 0)
-        
-        # Decode to check content
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        
-        # Check for task title
-        self.assertIn('Parent Task', text_content)
-        # Check for description
-        self.assertIn('Parent description', text_content)
-        # Check for due date
-        self.assertIn('DUE:', text_content)
-        # Check for borders
-        self.assertIn('=', text_content)
-        
-        # Check for ESC/POS commands in binary data
-        self.assertIn(b'\x1B\x40', escp_data)  # ESC @ (init)
-        self.assertIn(b'\x1D\x56\x00', escp_data)  # GS V 0 (cut)
-
-    def test_convert_task_to_text_escp_with_hierarchy(self):
-        """Test text conversion with hierarchical task."""
-        escp_data = convert_task_to_text_escp(self.grandchild_task)
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        
-        # Check for parent information
-        self.assertIn('Parents', text_content)
-        self.assertIn('Parent Task', text_content)
-        self.assertIn('Child Task', text_content)
-        # Check for current task
-        self.assertIn('Grandchild Task', text_content)
-
-    def test_convert_task_to_text_escp_urgency_symbols(self):
-        """Test urgency symbol generation in text mode."""
-        test_cases = [
-            ('critical', '[!!!]'),
-            ('urgent', '[!!]'),
-            ('normal', '[!]'),
-            ('low', '[ ]')
-        ]
-        
-        for urgency, expected_symbol in test_cases:
-            task = Task.objects.create(
-                title=f'Test {urgency}',
-                urgency=urgency,
-                owner=self.user
-            )
-            with self.subTest(urgency=urgency):
-                escp_data = convert_task_to_text_escp(task)
-                text_content = escp_data.decode('utf-8', errors='ignore')
-                self.assertIn(expected_symbol, text_content)
-
-    def test_convert_task_to_text_escp_long_text_wrapping(self):
-        """Test text wrapping in text mode."""
-        long_task = Task.objects.create(
-            title='This is a very long task title that should be wrapped properly when printed in text mode',
-            description='This is also a very long description that needs to be wrapped to fit within the thermal printer constraints',
-            urgency='normal',
-            owner=self.user
-        )
-        
-        escp_data = convert_task_to_text_escp(long_task)
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        
-        # Check that content is present (wrapping should not lose data)
-        self.assertIn('very long task title', text_content)
-        self.assertIn('very long description', text_content)
-        
-        # Check that lines don't exceed reasonable length
-        lines = text_content.split('\n')
-        for line in lines:
-            # Allow some flexibility for borders and symbols
-            if not line.startswith('=') and '[' not in line:
-                self.assertLessEqual(len(line.strip()), 50, f"Line too long: {line}")
-
-    def test_convert_task_to_text_escp_overdue_indicators(self):
-        """Test due date status indicators in text mode."""
-        # Overdue task
-        overdue_task = Task.objects.create(
-            title='Overdue',
-            urgency='critical',
-            owner=self.user,
-            due_date=timezone.now() - timedelta(days=1)
-        )
-        
-        escp_data = convert_task_to_text_escp(overdue_task)
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        self.assertIn('OVERDUE!', text_content)
-        
-        # Today task
-        today_task = Task.objects.create(
-            title='Today',
-            urgency='urgent',
-            owner=self.user,
-            due_date=timezone.now().date()
-        )
-        
-        escp_data = convert_task_to_text_escp(today_task)
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        self.assertIn('TODAY!', text_content)
 
 
 class PrintTaskTests(PrintUtilsTestCase):
@@ -431,22 +332,6 @@ class PrintTaskTests(PrintUtilsTestCase):
         self.assertIn('successfully', message)
         
         # Verify socket was used
-        mock_socket.assert_called_once()
-        mock_sock.connect.assert_called_once()
-        mock_sock.sendall.assert_called_once()
-
-    @unittest.mock.patch('tasks.print_utils.socket.socket')
-    def test_print_task_text_mode_success(self, mock_socket):
-        """Test successful printing in text mode."""
-        mock_sock = unittest.mock.Mock()
-        mock_socket.return_value.__enter__.return_value = mock_sock
-        
-        success, message = print_task(self.parent_task, use_graphics=False)
-        
-        self.assertTrue(success)
-        self.assertIn('text', message)
-        self.assertIn('successfully', message)
-        
         mock_socket.assert_called_once()
         mock_sock.connect.assert_called_once()
         mock_sock.sendall.assert_called_once()
@@ -476,8 +361,8 @@ class PrintTaskTests(PrintUtilsTestCase):
 
     @unittest.mock.patch('tasks.print_utils.create_task_image')
     @unittest.mock.patch('tasks.print_utils.socket.socket')
-    def test_print_task_graphics_fallback_to_text(self, mock_socket, mock_create_image):
-        """Test fallback from graphics to text mode when image creation fails."""
+    def test_print_task_graphics_mode_image_failure(self, mock_socket, mock_create_image):
+        """Test graphics mode behavior when image creation fails."""
         # Make image creation fail
         mock_create_image.side_effect = Exception("Image creation failed")
         
@@ -487,10 +372,9 @@ class PrintTaskTests(PrintUtilsTestCase):
         
         success, message = print_task(self.parent_task, use_graphics=True)
         
-        self.assertTrue(success)
-        # Should have fallen back to text mode (message will still say graphics due to implementation)
-        # The important part is that it succeeded despite the image creation failure
-        self.assertIn('successfully', message)
+        # Should fail when image creation fails since text mode fallback is removed
+        self.assertFalse(success)
+        self.assertIn('Image creation failed', message)
 
     @override_settings(PRINTER_HOST='test.printer.local', PRINTER_PORT=8080)
     @unittest.mock.patch('tasks.print_utils.socket.socket')
@@ -557,10 +441,6 @@ class PrintUtilsEdgeCasesTests(PrintUtilsTestCase):
             owner=self.user
         )
         
-        # Test text mode (should handle unicode gracefully)
-        escp_data = convert_task_to_text_escp(unicode_task)
-        self.assertIsInstance(escp_data, bytes)
-        
         # Test graphics mode
         image = create_task_image(unicode_task)
         self.assertIsInstance(image, Image.Image)
@@ -577,9 +457,6 @@ class PrintUtilsEdgeCasesTests(PrintUtilsTestCase):
         # Should not crash with minimal fields
         image = create_task_image(minimal_task)
         self.assertIsInstance(image, Image.Image)
-        
-        escp_data = convert_task_to_text_escp(minimal_task)
-        self.assertIsInstance(escp_data, bytes)
 
     def test_very_deep_hierarchy(self):
         """Test handling of deep task hierarchy within model limits."""
@@ -626,10 +503,6 @@ class PrintUtilsEdgeCasesTests(PrintUtilsTestCase):
         # Should handle long parent names gracefully
         image = create_task_image(child_with_long_parent)
         self.assertIsInstance(image, Image.Image)
-        
-        # Test text mode too
-        escp_data = convert_task_to_text_escp(child_with_long_parent)
-        self.assertIsInstance(escp_data, bytes)
 
     def test_task_with_no_attributes(self):
         """Test tasks that might have None values for optional attributes."""
@@ -645,23 +518,6 @@ class PrintUtilsEdgeCasesTests(PrintUtilsTestCase):
         
         image = create_task_image(basic_task)
         self.assertIsInstance(image, Image.Image)
-        
-        escp_data = convert_task_to_text_escp(basic_task)
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        self.assertIn('Not set', text_content)
-
-    def test_convert_task_to_text_escp_special_characters(self):
-        """Test text conversion with special characters and symbols."""
-        special_task = Task.objects.create(
-            title='Task with special chars: @#$%^&*()[]{}|\\',
-            description='Description with quotes "test" and apostrophe\'s',
-            urgency='urgent',
-            owner=self.user
-        )
-        
-        escp_data = convert_task_to_text_escp(special_task)
-        self.assertIsInstance(escp_data, bytes)
-        # Should not crash with special characters
 
     def test_large_image_dimensions(self):
         """Test that images don't become unreasonably large."""
@@ -693,10 +549,6 @@ class PrintUtilsEdgeCasesTests(PrintUtilsTestCase):
         # Should handle null due date gracefully
         image = create_task_image(task_null_due)
         self.assertIsInstance(image, Image.Image)
-        
-        escp_data = convert_task_to_text_escp(task_null_due)
-        text_content = escp_data.decode('utf-8', errors='ignore')
-        self.assertIn('Not set', text_content)
 
 
 class PrintModalIntegrationTests(PrintUtilsTestCase):
@@ -718,7 +570,7 @@ class PrintModalIntegrationTests(PrintUtilsTestCase):
         self.assertIn('id="printConfirmModal"', content)
         self.assertIn('id="confirmPrintBtn"', content)
         self.assertIn('Print this task?', content)
-        self.assertIn('Yes, Print', content)
+        self.assertIn('Print Task', content)  # Updated button text
         
         # Check for print button in task items
         self.assertIn('showPrintConfirmModal', content)
@@ -744,8 +596,8 @@ class PrintModalIntegrationTests(PrintUtilsTestCase):
         response = self.client.get(reverse('task_list'))
         content = response.content.decode()
         
-        # Should have print button with correct onclick handler
-        expected_onclick = f'showPrintConfirmModal({test_task.id})'
+        # Should have print button with correct onclick handler including task title
+        expected_onclick = f"showPrintConfirmModal({test_task.id}, 'Test Print Task')"
         self.assertIn(expected_onclick, content)
 
     @unittest.mock.patch('tasks.views.print_task')

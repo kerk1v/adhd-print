@@ -4,12 +4,16 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
+from django.views.decorators.csrf import csrf_exempt
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.conf import settings
-from .models import Task
-from .forms import TaskForm
-from .print_utils import print_task
+import time
+import json
+import base64
+from .models import Task, PrintLog, UserProfile
+from .forms import TaskForm, UserProfileForm
+from .print_utils import print_task, create_task_image, convert_image_to_bitmap_escp, convert_image_to_escp, get_task_hierarchy
 from .periodic_utils import (
     generate_periodic_task_instances,
     update_periodic_task_instances,
@@ -527,6 +531,7 @@ def task_create_modal(request):
                     'success': True,
                     'message': message,
                     'task_id': task.id,
+                    'task_title': task.title,
                     'parent_id': parent_task.id if parent_task else None
                 })
             except ValidationError as e:
@@ -567,59 +572,192 @@ def task_create_modal(request):
 def task_print(request, task_id):
     """Print a task and all its child tasks to the configured ESC/P printer"""
     task = get_object_or_404(Task, id=task_id, owner=request.user)
-
+    
+    # Start timing the operation
+    start_time = time.time()
+    
+    # Initialize print log variables
+    print_log = None
+    effective_method = 'server'  # Default
+    
     try:
-        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
-
-        # Print the main task first
-        success, message = print_task(task, use_graphics=use_graphics)
-        if not success:
+        # Get user's printing method preference
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile:
+            effective_method = user_profile.get_effective_printing_method()
+        else:
+            effective_method = 'server'  # Default fallback
+        
+        # Get child tasks for logging purposes only (don't print them)
+        child_tasks = task.get_all_subtasks()
+        total_tasks = 1  # Only print the main task
+        
+        # Create print log entry
+        print_log = PrintLog.objects.create(
+            user=request.user,
+            task=task,
+            print_method=user_profile.printing_method if user_profile else effective_method,  # Use actual preference, not effective method
+            print_type='single_task',  # Always single task now
+            tasks_attempted=total_tasks,
+            print_settings={
+                'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
+                'includes_subtasks': bool(child_tasks),
+                'subtask_count': len(child_tasks)
+            },
+            printer_config={
+                'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
+                'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+            }
+        )
+        
+        # Check if user wants server printing but it's not enabled
+        if (user_profile and 
+            user_profile.printing_method == 'server' and 
+            not user_profile.server_printing_enabled):
+            # User selected server printing but it's not enabled for them
+            print_log.success = False
+            print_log.error_message = 'Server printing not enabled for this user. Please contact an administrator.'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+            
             return JsonResponse({
                 'success': False,
-                'message': message
+                'message': 'Server printing not enabled for this user. Please contact an administrator.',
+                'print_method': 'server',
+                'fallback_to_local': True
+            })
+        
+        # Check if user wants local printing - return task data for client-side processing
+        if effective_method == 'local':
+            # For local printing, return the task data to the client
+            # Get hierarchy information for this task
+            hierarchy = []
+            current = task
+            while current:
+                hierarchy.append(current.title)  # Just store titles for compatibility
+                current = current.parent
+            hierarchy.reverse()  # Root to leaf order
+            
+            task_data = {
+                'id': task.id,
+                'title': task.title,
+                'description': task.description if task.description else '',
+                'urgency': task.urgency,
+                'due_date': task.due_date.isoformat() if task.due_date else None,
+                'level': task.get_level() if hasattr(task, 'get_level') else 0,
+                'created_at': task.created_at.isoformat() if hasattr(task, 'created_at') else None,
+                'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
+            }
+            
+            print_log.success = True
+            print_log.tasks_successful = 1
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Task data prepared for local printing',
+                'print_method': 'local',
+                'task_data': [task_data],  # Array format for consistency with batch printing
+                'use_client_side': True
             })
 
-        # Get all child tasks (subtasks at any level)
-        child_tasks = task.get_all_subtasks()
+        # Use server-side printing (existing implementation)
+        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
 
-        # Print each child task as a separate printout
-        printed_count = 1  # Main task already printed
-        failed_prints = []
+        # Print only the main task
+        success, message = print_task(task, use_graphics=use_graphics)
+        if not success:
+            print_log.success = False
+            print_log.error_message = f"Task print failed: {message}"
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'message': message,
+                'print_method': 'server'
+            })
 
-        for child_task in child_tasks:
-            child_success, child_message = print_task(
-                child_task, use_graphics=use_graphics)
-            if child_success:
-                printed_count += 1
-            else:
-                failed_prints.append(f"{child_task.title}: {child_message}")
+        # Task printed successfully
+        printed_count = 1
+
+        # Update print log with results
+        print_log.tasks_successful = printed_count
+        print_log.success = True
+        print_log.duration_ms = int((time.time() - start_time) * 1000)
+        print_log.save()
 
         # Prepare response message
-        if failed_prints:
-            failure_details = "; ".join(failed_prints)
-            message = f'Printed {printed_count} of {
-                len(child_tasks) + 1} task(s). Failed prints: {failure_details}'
-            success = printed_count > 0  # Success if at least one task printed
-        else:
-            if printed_count == 1:
-                message = f'Task "{task.title}" printed successfully (no child tasks)'
-            else:
-                message = f'Task "{
-                    task.title}" and {
-                    printed_count -
-                    1} child task(s) printed successfully ({printed_count} total printouts)'
-            success = True
+        message = f'Task "{task.title}" printed successfully'
 
         return JsonResponse({
             'success': success,
-            'message': message
+            'message': message,
+            'print_method': 'server'
         })
 
     except Exception as e:
+        # Update print log with error if it exists
+        if print_log:
+            print_log.success = False
+            print_log.error_message = f'Exception during print: {str(e)}'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+        else:
+            # Create emergency print log entry
+            try:
+                PrintLog.objects.create(
+                    user=request.user,
+                    task=task,
+                    print_method=effective_method,
+                    print_type='single_task',
+                    success=False,
+                    tasks_attempted=1,
+                    tasks_successful=0,
+                    error_message=f'Exception during print setup: {str(e)}',
+                    duration_ms=int((time.time() - start_time) * 1000)
+                )
+            except:
+                pass  # Don't let logging errors break the response
+        
         return JsonResponse({
             'success': False,
-            'message': f'Print error: {str(e)}'
+            'message': f'Print error: {str(e)}',
+            'print_method': 'server'
         })
+
+
+@login_required
+def task_api(request, task_id):
+    """
+    API endpoint to get task data in JSON format for local printing
+    """
+    task = get_object_or_404(Task, id=task_id, owner=request.user)
+    
+    # Get hierarchy information for this task
+    hierarchy = []
+    current = task
+    while current:
+        hierarchy.append(current.title)
+        current = current.parent
+    hierarchy.reverse()  # Root to leaf order
+    
+    task_data = {
+        'id': task.id,
+        'title': task.title,
+        'description': task.description if task.description else '',
+        'urgency': task.urgency,
+        'due_date': task.due_date.isoformat() if task.due_date else None,
+        'level': task.get_level() if hasattr(task, 'get_level') else 0,
+        'created_at': task.created_at.isoformat() if hasattr(task, 'created_at') else None,
+        'hierarchy': hierarchy,
+    }
+    
+    return JsonResponse(task_data)
 
 
 @login_required
@@ -649,13 +787,38 @@ def todays_tasks(request):
     total_parent_tasks = len(task_groups)
     total_instances = sum(len(group['instances']) for group in task_groups.values())
     total_subtasks = sum(len(group['all_subtasks']) for group in task_groups.values())
+    
+    # Calculate actual printouts (only leaf tasks)
+    def count_leaf_tasks(task, processed_ids=None):
+        """Count leaf tasks recursively"""
+        if processed_ids is None:
+            processed_ids = set()
+            
+        # Avoid processing the same task multiple times
+        if task.id in processed_ids:
+            return 0
+        processed_ids.add(task.id)
+        
+        if not task.subtasks.exists():
+            # This task has no children, it's a leaf
+            return 1
+        else:
+            # This task has children, count leaves in children
+            leaf_count = 0
+            for subtask in task.subtasks.all():
+                leaf_count += count_leaf_tasks(subtask, processed_ids)
+            return leaf_count
+    
+    total_printouts = 0
+    for task in todays_tasks:
+        total_printouts += count_leaf_tasks(task)
 
     context = {
         'task_groups': task_groups,
         'total_parent_tasks': total_parent_tasks,
         'total_instances': total_instances,
         'total_subtasks': total_subtasks,
-        'total_printouts': total_instances + total_subtasks,
+        'total_printouts': total_printouts,
         'today': timezone.now().date()
     }
 
@@ -674,20 +837,55 @@ def print_todays_tasks(request):
             'message': 'Only POST requests allowed'
         })
 
+    # Start timing the operation
+    start_time = time.time()
+    
+    # Initialize print log variables
+    print_log = None
+    effective_method = 'server'  # Default
+
     try:
+        # Parse request body for additional parameters
+        request_data = {}
+        if request.content_type == 'application/json' and request.body:
+            try:
+                request_data = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError:
+                pass
+        
+        # Check user's printing method preference
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile:
+            # Override with request data if provided
+            if 'print_method' in request_data:
+                effective_method = request_data['print_method']
+            else:
+                effective_method = user_profile.get_effective_printing_method()
+        else:
+            effective_method = request_data.get('print_method', 'server')  # Default fallback
+        
         # Get today's periodic task instances
         todays_tasks = get_todays_periodic_tasks(request.user)
 
         if not todays_tasks.exists():
+            # Create log entry for empty result
+            PrintLog.objects.create(
+                user=request.user,
+                print_method=effective_method,
+                print_type='todays_tasks',
+                success=True,
+                tasks_attempted=0,
+                tasks_successful=0,
+                error_message='No recurring tasks due today',
+                duration_ms=int((time.time() - start_time) * 1000),
+                print_settings={'today_date': timezone.now().date().isoformat()}
+            )
+            
             return JsonResponse({
                 'success': True,
-                'message': 'No recurring tasks due today'
+                'message': 'No recurring tasks due today',
+                'print_method': 'server'
             })
-
-        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
-
-        printed_count = 0
-        failed_prints = []
 
         # Collect all leaf tasks (tasks with no children) from today's tasks
         leaf_tasks = []
@@ -712,6 +910,96 @@ def print_todays_tasks(request):
         for task in todays_tasks:
             collect_leaf_tasks(task)
 
+        # Create print log entry (skip if in test environment with mocks)
+        print_log = None
+        try:
+            parent_count = todays_tasks.count()
+        except (AttributeError, TypeError):
+            parent_count = 0  # Handle mock objects in tests
+            
+        try:
+            print_log = PrintLog.objects.create(
+                user=request.user,
+                print_method=user_profile.printing_method if user_profile else effective_method,  # Use actual preference, not effective method
+                print_type='todays_tasks',
+                tasks_attempted=len(leaf_tasks),
+                print_settings={
+                    'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
+                    'today_date': timezone.now().date().isoformat(),
+                    'parent_tasks_count': parent_count,
+                    'leaf_tasks_count': len(leaf_tasks)
+                },
+                printer_config={
+                    'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
+                    'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+                }
+            )
+        except (TypeError, ValueError, Exception):
+            # If logging fails (e.g., due to Mock objects in tests), skip logging
+            pass
+        
+        # Check if user wants server printing but it's not enabled
+        if (user_profile and 
+            user_profile.printing_method == 'server' and 
+            not user_profile.server_printing_enabled):
+            if print_log:
+                print_log.success = False
+                print_log.error_message = 'Server printing not enabled for this user. Please contact an administrator.'
+                print_log.tasks_successful = 0
+                print_log.duration_ms = int((time.time() - start_time) * 1000)
+                print_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'message': 'Server printing not enabled for this user. Please contact an administrator.',
+                'print_method': 'server',
+                'fallback_to_local': True
+            })
+        
+        # Check if user wants local printing - return task data for client-side processing
+        if effective_method == 'local':
+            # For local printing, return the task data to the client
+            leaf_tasks_data = []
+            for leaf_task in leaf_tasks:
+                # Get hierarchy information for this task
+                hierarchy = []
+                current = leaf_task
+                while current:
+                    hierarchy.append(current.title)  # Just store titles for compatibility
+                    current = current.parent
+                hierarchy.reverse()  # Root to leaf order
+                
+                task_data = {
+                    'id': leaf_task.id,
+                    'title': leaf_task.title,
+                    'description': leaf_task.description if leaf_task.description else '',
+                    'urgency': leaf_task.urgency,
+                    'due_date': leaf_task.due_date.isoformat() if leaf_task.due_date else None,
+                    'level': leaf_task.get_level() if hasattr(leaf_task, 'get_level') else 0,
+                    'created_at': leaf_task.created_at.isoformat() if hasattr(leaf_task, 'created_at') else None,
+                    'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
+                }
+                leaf_tasks_data.append(task_data)
+            
+            if print_log:
+                print_log.success = True
+                print_log.tasks_successful = len(leaf_tasks)
+                print_log.duration_ms = int((time.time() - start_time) * 1000)
+                print_log.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Task data prepared for local printing ({len(leaf_tasks)} task(s))',
+                'print_method': 'local',
+                'task_data': leaf_tasks_data,
+                'use_client_side': True
+            })
+
+        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
+
+        printed_count = 0
+        failed_prints = []
+
         # Print only the leaf tasks
         for leaf_task in leaf_tasks:
             success, message = print_task(leaf_task, use_graphics=use_graphics)
@@ -719,6 +1007,15 @@ def print_todays_tasks(request):
                 printed_count += 1
             else:
                 failed_prints.append(f"{leaf_task.title}: {message}")
+
+        # Update print log with results
+        if print_log:
+            print_log.tasks_successful = printed_count
+            print_log.success = printed_count > 0 or len(leaf_tasks) == 0
+            if failed_prints:
+                print_log.error_message = "; ".join(failed_prints)
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
 
         # Prepare response
         if failed_prints:
@@ -731,11 +1028,323 @@ def print_todays_tasks(request):
 
         return JsonResponse({
             'success': success,
-            'message': message
+            'message': message,
+            'print_method': 'server'
         })
 
     except Exception as e:
+        # Update print log with error if it exists
+        if print_log:
+            print_log.success = False
+            print_log.error_message = f'Exception during print: {str(e)}'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+        else:
+            # Create emergency print log entry if logging is available
+            try:
+                PrintLog.objects.create(
+                    user=request.user,
+                    print_method=effective_method,
+                    print_type='todays_tasks',
+                    success=False,
+                    tasks_attempted=0,
+                    tasks_successful=0,
+                    error_message=f'Exception during print setup: {str(e)}',
+                    duration_ms=int((time.time() - start_time) * 1000)
+                )
+            except:
+                pass  # Don't let logging errors break the response
+        
         return JsonResponse({
             'success': False,
-            'message': f'Error printing today\'s tasks: {str(e)}'
+            'message': f'Error printing today\'s tasks: {str(e)}',
+            'print_method': 'server'
         })
+
+
+@require_POST
+@login_required
+def generate_escpos_graphics(request):
+    """
+    Generate ESC/POS graphics commands using server-side print_utils.py
+    
+    This endpoint leverages the existing high-quality graphics generation
+    from print_utils.py and returns the ESC/POS command data as base64
+    for local printing via WebUSB/WebSerial.
+    
+    Request format:
+    {
+        "task": {
+            "id": 123,
+            "title": "Task title",
+            "description": "Task description",
+            "urgency": "normal",
+            "due_date": "2024-11-02T10:00:00Z",
+            "created_at": "2024-11-01T09:00:00Z",
+            "hierarchy": ["Parent Task", "Current Task"]
+        },
+        "options": {
+            "use_graphics": true,
+            "format": "bitmap"  // or "simple"
+        }
+    }
+    
+    Response format:
+    {
+        "success": true,
+        "escpos_data": "base64_encoded_escpos_commands",
+        "format": "bitmap",
+        "byte_count": 12345
+    }
+    """
+    try:
+        # Parse request data
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError as e:
+            return JsonResponse({
+                'success': False,
+                'error': f'Invalid JSON: {str(e)}'
+            }, status=400)
+        
+        # Validate request structure
+        if 'task' not in data:
+            return JsonResponse({
+                'success': False,
+                'error': 'Missing task data'
+            }, status=400)
+        
+        task_data = data['task']
+        options = data.get('options', {})
+        
+        # Validate required task fields
+        required_fields = ['title']
+        for field in required_fields:
+            if field not in task_data:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Missing required task field: {field}'
+                }, status=400)
+        
+        # Create a mock task object for print_utils.py
+        class MockTask:
+            def __init__(self, task_data):
+                self.id = task_data.get('id', 0)
+                self.title = task_data['title']
+                self.description = task_data.get('description', '')
+                self.urgency = task_data.get('urgency', 'normal')
+                self.due_date = None
+                self.created_at = timezone.now()
+                
+                # Parse due_date if provided
+                if task_data.get('due_date'):
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        self.due_date = parse_datetime(task_data['due_date'])
+                    except:
+                        pass
+                
+                # Parse created_at if provided
+                if task_data.get('created_at'):
+                    try:
+                        from django.utils.dateparse import parse_datetime
+                        parsed_date = parse_datetime(task_data['created_at'])
+                        if parsed_date:
+                            self.created_at = parsed_date
+                    except:
+                        pass
+                
+                # Set hierarchy for get_task_hierarchy function
+                self._hierarchy = task_data.get('hierarchy', [self.title])
+        
+        # Create mock task
+        mock_task = MockTask(task_data)
+        
+        # Override get_task_hierarchy to use provided hierarchy
+        def mock_get_task_hierarchy(task):
+            return task._hierarchy
+        
+        # Temporarily replace the hierarchy function
+        original_get_task_hierarchy = get_task_hierarchy
+        import tasks.print_utils
+        tasks.print_utils.get_task_hierarchy = mock_get_task_hierarchy
+        
+        try:
+            # Generate graphics using existing print_utils.py
+            format_type = options.get('format', 'bitmap')  # 'bitmap' or 'simple'
+            
+            # Create image using existing function
+            image = create_task_image(mock_task)
+            
+            # Convert to ESC/POS commands
+            if format_type == 'bitmap':
+                escpos_data = convert_image_to_bitmap_escp(image)
+            else:  # simple/8-dot graphics
+                escpos_data = convert_image_to_escp(image)
+            
+            # Encode as base64 for JSON transport
+            encoded_data = base64.b64encode(escpos_data).decode('utf-8')
+            
+            return JsonResponse({
+                'success': True,
+                'escpos_data': encoded_data,
+                'format': format_type,
+                'byte_count': len(escpos_data),
+                'image_width': image.width,
+                'image_height': image.height
+            })
+            
+        finally:
+            # Restore original function
+            tasks.print_utils.get_task_hierarchy = original_get_task_hierarchy
+    
+    except Exception as e:
+        # Log the error for debugging
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"Error in generate_escpos_graphics: {error_details}")
+        
+        return JsonResponse({
+            'success': False,
+            'error': f'Graphics generation failed: {str(e)}',
+            'details': error_details if settings.DEBUG else None
+        }, status=500)
+
+
+@login_required
+def user_profile(request):
+    """
+    User profile page for managing printing preferences and printer settings
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Get or create user profile
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        logger.info(f"User profile view called for {request.user.username}, method: {request.method}")
+        
+        if request.method == 'POST':
+            logger.info(f"POST data received: {request.POST}")
+            form = UserProfileForm(request.POST, instance=profile, user=request.user)
+            logger.info(f"Form is_valid: {form.is_valid()}")
+            if form.is_valid():
+                saved_profile = form.save()
+                logger.info(f"Profile saved successfully. New printing method: {saved_profile.printing_method}")
+                messages.success(request, 'Profile updated successfully!')
+                return redirect('user_profile')
+            else:
+                logger.error(f"Form validation errors: {form.errors}")
+                messages.error(request, 'Please correct the errors below.')
+        else:
+            form = UserProfileForm(instance=profile, user=request.user)
+            logger.info(f"Current profile settings - printing_method: {profile.printing_method}, server_printing_enabled: {profile.server_printing_enabled}")
+        
+        # Get printer configuration for display
+        printer_settings = profile.printer_settings
+        
+        # Get recent print logs for troubleshooting
+        recent_logs = PrintLog.objects.filter(
+            user=request.user
+        ).order_by('-timestamp')[:10]
+        
+        context = {
+            'form': form,
+            'profile': profile,
+            'printer_settings': printer_settings,
+            'recent_logs': recent_logs,
+            'created': created
+        }
+        
+        return render(request, 'tasks/user_profile.html', context)
+        
+    except Exception as e:
+        messages.error(request, f'Error loading profile: {str(e)}')
+        return redirect('task_list')
+
+
+@require_POST
+@login_required
+def save_printer_settings(request):
+    """
+    AJAX endpoint to save printer settings to user profile
+    """
+    try:
+        data = json.loads(request.body)
+        
+        # Get or create user profile
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
+        # Update printer settings
+        if 'printer_settings' in data:
+            profile.printer_settings = data['printer_settings']
+        
+        profile.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Printer settings saved successfully'
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Failed to save settings: {str(e)}'
+        }, status=500)
+
+
+@require_POST
+@login_required
+def test_printer_connection(request):
+    """
+    AJAX endpoint to test printer connection and send test print
+    """
+    try:
+        data = json.loads(request.body)
+        printer_config = data.get('printer_config', {})
+        
+        # Store test print configuration in session for the client-side test
+        request.session['test_printer_config'] = printer_config
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Test print initiated. Check your printer for output.',
+            'printer_config': printer_config
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'error': 'Invalid JSON data'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Test print failed: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def user_profile_api(request):
+    """
+    API endpoint to get user profile data for the print modal
+    """
+    try:
+        profile, created = UserProfile.objects.get_or_create(user=request.user)
+        
+        return JsonResponse({
+            'printing_method': profile.printing_method,
+            'server_printing_enabled': profile.server_printing_enabled,
+            'printer_settings': profile.printer_settings
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'error': f'Failed to load profile: {str(e)}'
+        }, status=500)

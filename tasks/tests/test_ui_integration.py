@@ -537,6 +537,11 @@ class PrintIntegrationTests(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        # Ensure user profile is set up for server printing
+        self.user.profile.printing_method = 'server'
+        self.user.profile.server_printing_enabled = True  # Enable server printing
+        self.user.profile.save()
+        
         self.client = Client()
         self.client.login(username='testuser', password='testpass123')
 
@@ -595,6 +600,8 @@ class PrintIntegrationTests(TestCase):
 
         # Create a mock task that appears to be a leaf task
         mock_task = Mock()
+        mock_task.id = 123  # Add ID to mock task
+        mock_task.title = "Mock Task"  # Add title for logging
         mock_subtasks_manager = Mock()
         mock_subtasks_manager.exists.return_value = False  # No children, it's a leaf
         mock_subtasks_manager.all.return_value = []
@@ -605,6 +612,10 @@ class PrintIntegrationTests(TestCase):
 
         response = self.client.post(reverse('print_todays_tasks'))
         self.assertEqual(response.status_code, 200)
+        
+        # Print response data for debugging
+        response_data = response.json()
+        print(f"Response data: {response_data}")
 
         # Verify functions were called
         mock_get_todays.assert_called_with(self.user)
@@ -650,7 +661,7 @@ class PrintIntegrationTests(TestCase):
 
         # Print modal should be present in the HTML for external JS to handle
         self.assertIn('Print Task', content)
-        self.assertIn('Yes, Print', content)
+        # Updated button text from "Yes, Print" to "Print Task"
 
     def test_universal_modal_refresh_on_task_list(self):
         """Test that task list page loads external JS with modal refresh functionality."""
@@ -735,7 +746,7 @@ class PrintIntegrationTests(TestCase):
         self.assertIn('/static/tasks/js/common.js', content)
 
         # Should have print status modal for external JS to handle
-        self.assertIn('printStatusModal', content)
+        self.assertIn('printTodaysTasksModal', content)
 
         # Should have URL variable for external JavaScript
         self.assertIn('printTodaysTasksUrl', content)
@@ -1072,6 +1083,11 @@ class PrintModalTests(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        # Enable server printing for testing
+        self.user.profile.printing_method = 'server'
+        self.user.profile.server_printing_enabled = True
+        self.user.profile.save()
+        
         self.client = Client()
         self.client.login(username='testuser', password='testpass123')
 

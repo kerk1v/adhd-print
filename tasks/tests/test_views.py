@@ -424,6 +424,11 @@ class TaskSpecializedViewTests(TestCase):
             email='test@example.com',
             password='testpass123'
         )
+        # Enable server printing for testing
+        self.user.profile.printing_method = 'server'
+        self.user.profile.server_printing_enabled = True
+        self.user.profile.save()
+        
         self.client = Client()
         self.client.login(username='testuser', password='testpass123')
 

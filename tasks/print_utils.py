@@ -517,15 +517,9 @@ def convert_image_to_bitmap_escp(image):
     return b''.join(commands)
 
 
-def convert_task_to_text_escp(task):
-    """Text-only printing using ESC/POS commands for thermal receipt printers"""
-    commands = []
 
-    # Initialize printer (ESC/POS)
-    commands.append(b'\x1B\x40')  # ESC @ (Initialize printer)
 
-    # Set character code table (for international characters)
-    commands.append(b'\x1B\x74\x00')  # ESC t 0 (Character code table 0)
+def print_task(task, use_graphics=True):
 
     # Set font to Font A (default)
     commands.append(b'\x1B\x4D\x00')  # ESC M 0 (Font A)
@@ -621,7 +615,10 @@ def convert_task_to_text_escp(task):
 
         commands.append(("-" * 42 + "\n").encode('utf-8'))
 
-    # Print task title with normal size
+    # Print task title with centering (using ESC/POS alignment commands)
+    # Send center alignment command
+    commands.append(b'\x1B\x61\x01')  # ESC a 1 (Center align)
+    
     # Word wrap title for normal text (42 chars per line, use 40 to be safe)
     title = task.title
     if len(title) > 40:
@@ -643,6 +640,9 @@ def convert_task_to_text_escp(task):
             commands.append(f"{line}\n".encode('utf-8'))
     else:
         commands.append(f"{title}\n".encode('utf-8'))
+    
+    # Reset to left alignment
+    commands.append(b'\x1B\x61\x00')  # ESC a 0 (Left align)
     commands.append(("-" * 42 + "\n").encode('utf-8'))
 
     # Print description
@@ -675,9 +675,6 @@ def convert_task_to_text_escp(task):
     commands.append(b'\x0A\x0A')
     commands.append(b'\x1D\x56\x00')  # GS V 0 (Full cut)
 
-    return b''.join(commands)
-
-
 def print_task(task, use_graphics=True):
     """
     Print a task to the configured ESC/POS thermal printer.
@@ -703,17 +700,9 @@ def print_task(task, use_graphics=True):
         - Full printer compatibility
     """
     try:
-        if use_graphics:
-            # Use bitmap method since it's working for the user's printer
-            try:
-                image = create_task_image(task)
-                print_data = convert_image_to_bitmap_escp(image)
-            except Exception as e:
-                print(f"Bitmap graphics mode failed: {e}, falling back to text mode")
-                print_data = convert_task_to_text_escp(task)
-        else:
-            # Use text mode directly
-            print_data = convert_task_to_text_escp(task)
+        # Use bitmap graphics mode only
+        image = create_task_image(task)
+        print_data = convert_image_to_bitmap_escp(image)
 
         # Send to printer
         printer_host = getattr(settings, 'PRINTER_HOST', '192.168.1.40')

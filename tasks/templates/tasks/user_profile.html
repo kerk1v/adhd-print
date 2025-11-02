@@ -1,0 +1,435 @@
+{% extends 'tasks/base.html' %}
+{% load static %}
+
+{% block title %}User Profile - Printing Preferences{% endblock %}
+
+{% block content %}
+<style>
+/* Fix for printer selection visibility when active */
+.printer-option.active {
+    background-color: #0d6efd !important;
+    color: white !important;
+}
+.printer-option.active .text-muted {
+    color: #e9ecef !important;
+}
+</style>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-cog me-2"></i>User Profile & Printing Preferences
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="profile-form">
+                    {% csrf_token %}
+                    
+                    <!-- Printing Method Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">{{ form.printing_method.label }}</label>
+                        <div class="printing-method-options">
+                            {% for choice in form.printing_method %}
+                                <div class="form-check mb-2">
+                                    {{ choice.tag }}
+                                    <label class="form-check-label" for="{{ choice.id_for_label }}">
+                                        {{ choice.choice_label }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.printing_method.help_text %}
+                            <div class="form-text">{{ form.printing_method.help_text }}</div>
+                        {% endif %}
+                        {% if form.printing_method.errors %}
+                            <div class="text-danger">{{ form.printing_method.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Server Printing Fallback (Admin Only) -->
+                    {% if user.is_staff %}
+                    <div class="mb-4">
+                        <div class="form-check">
+                            {{ form.server_printing_enabled }}
+                            <label class="form-check-label" for="{{ form.server_printing_enabled.id_for_label }}">
+                                {{ form.server_printing_enabled.label }}
+                            </label>
+                        </div>
+                        {% if form.server_printing_enabled.help_text %}
+                            <div class="form-text">{{ form.server_printing_enabled.help_text }}</div>
+                        {% endif %}
+                        {% if form.server_printing_enabled.errors %}
+                            <div class="text-danger">{{ form.server_printing_enabled.errors }}</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <!-- Hidden field for non-admin users -->
+                    {{ form.server_printing_enabled }}
+                    {% endif %}
+                    
+                    <!-- Browser Compatibility Status -->
+                    <div class="mb-4" id="browser-compatibility">
+                        <h6 class="fw-bold">Browser Compatibility Status</h6>
+                        <div id="compatibility-status" class="compatibility-status">
+                            <!-- Will be populated by JavaScript -->
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>Save Preferences
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Local Printer Configuration -->
+        <div class="card mb-4" id="local-printer-config" style="display: {% if form.printing_method.value == 'local' %}block{% else %}none{% endif %};">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-print me-2"></i>Local Printer Configuration
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Printer Width Setting -->
+                <div class="mb-3">
+                    <label for="printer_width" class="form-label fw-bold">Printer Width</label>
+                    {% if form.printer_width %}
+                        {{ form.printer_width }}
+                        {% if form.printer_width.help_text %}
+                            <div class="form-text">{{ form.printer_width.help_text }}</div>
+                        {% endif %}
+                        {% if form.printer_width.errors %}
+                            <div class="text-danger">{{ form.printer_width.errors }}</div>
+                        {% endif %}
+                    {% else %}
+                        <select class="form-select" name="printer_width" id="printer_width">
+                            <option value="80mm">80mm (Standard receipts)</option>
+                            <option value="57mm">57mm (Narrow receipts)</option>
+                        </select>
+                        <div class="form-text">Select the width of your thermal printer paper.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Troubleshooting Guide -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle me-2"></i>Troubleshooting Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="troubleshooting-accordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="browser-support">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#browser-support-content">
+                                Browser Support Issues
+                            </button>
+                        </h2>
+                        <div id="browser-support-content" class="accordion-collapse collapse" data-bs-parent="#troubleshooting-accordion">
+                            <div class="accordion-body">
+                                <ul>
+                                    <li><strong>Chrome/Edge 89+:</strong> Full WebUSB and WebSerial support</li>
+                                    <li><strong>Opera 75+:</strong> WebSerial support only (no WebUSB)</li>
+                                    <li><strong>Firefox/Safari:</strong> Not supported - use server printing instead</li>
+                                </ul>
+                                <p><strong>Solution:</strong> Use Google Chrome or Microsoft Edge for best compatibility.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="printer-not-found">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#printer-not-found-content">
+                                Printer Not Found
+                            </button>
+                        </h2>
+                        <div id="printer-not-found-content" class="accordion-collapse collapse" data-bs-parent="#troubleshooting-accordion">
+                            <div class="accordion-body">
+                                <ol>
+                                    <li>Ensure printer is connected via USB or Serial cable</li>
+                                    <li>Check that printer is powered on</li>
+                                    <li>Verify printer drivers are installed (for Serial connections)</li>
+                                    <li>Try refreshing the page and discovering again</li>
+                                    <li>For USB printers: Make sure no other software is using the printer</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="print-quality">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#print-quality-content">
+                                Print Quality Issues
+                            </button>
+                        </h2>
+                        <div id="print-quality-content" class="accordion-collapse collapse" data-bs-parent="#troubleshooting-accordion">
+                            <div class="accordion-body">
+                                <ul>
+                                    <li><strong>Blurry text:</strong> Try "High Quality" mode or check paper width setting</li>
+                                    <li><strong>Partial printing:</strong> Ensure sufficient paper loaded</li>
+                                    <li><strong>No graphics:</strong> Server may be unavailable - will fallback to server printing</li>
+                                    <li><strong>Wrong paper size:</strong> Adjust paper width setting to match your printer</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="permission-issues">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#permission-issues-content">
+                                Permission Issues
+                            </button>
+                        </h2>
+                        <div id="permission-issues-content" class="accordion-collapse collapse" data-bs-parent="#troubleshooting-accordion">
+                            <div class="accordion-body">
+                                <p>When you first try to connect to a printer, your browser will ask for permission:</p>
+                                <ol>
+                                    <li>Click "Allow" when prompted for device access</li>
+                                    <li>Select your printer from the device list</li>
+                                    <li>If denied by accident, you may need to reset site permissions in browser settings</li>
+                                </ol>
+                                <p><strong>Chrome:</strong> Settings → Privacy and Security → Site Settings → Additional Permissions</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Sidebar with Print History -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history me-2"></i>Recent Print History
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if recent_logs %}
+                    <div class="print-history">
+                        {% for log in recent_logs %}
+                            <div class="d-flex justify-content-between align-items-center py-2 px-2 border-bottom">
+                                <div class="d-flex align-items-center">
+                                    {% if log.success %}
+                                        <i class="fas fa-check-circle text-success me-2"></i>
+                                    {% else %}
+                                        <i class="fas fa-times-circle text-danger me-2"></i>
+                                    {% endif %}
+                                    <div>
+                                        <div class="small fw-bold">{{ log.get_print_type_display }}</div>
+                                        {% if log.task %}
+                                            <div class="text-muted" style="font-size: 0.75rem;">{{ log.task.title|truncatechars:30 }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <small class="text-muted">{{ log.timestamp|date:"M d" }}</small>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted small">No print history yet.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Profile page JavaScript functionality
+document.addEventListener('DOMContentLoaded', function() {
+    initializeProfilePage();
+});
+
+function initializeProfilePage() {
+    console.log('🎯 INITIALIZING PROFILE PAGE...');
+    
+    // Check browser compatibility
+    checkBrowserCompatibility();
+    
+    // Toggle printer configuration based on selected method
+    togglePrintingMethod();
+    
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Load current printer settings
+    loadCurrentSettings();
+}
+
+function checkBrowserCompatibility() {
+    const statusDiv = document.getElementById('compatibility-status');
+    
+    if (typeof localPrintingSupportDetector !== 'undefined') {
+        const support = localPrintingSupportDetector.getBrowserCompatibilityInfo();
+        
+        let html = '<div class="row">';
+        html += `<div class="col-6">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-usb me-2"></i>
+                <span>WebUSB: </span>
+                <span class="ms-1 ${support.webUSBSupported ? 'text-success' : 'text-danger'}">
+                    ${support.webUSBSupported ? '✅ Supported' : '❌ Not supported'}
+                </span>
+            </div>
+        </div>`;
+        html += `<div class="col-6">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-plug me-2"></i>
+                <span>WebSerial: </span>
+                <span class="ms-1 ${support.webSerialSupported ? 'text-success' : 'text-danger'}">
+                    ${support.webSerialSupported ? '✅ Supported' : '❌ Not supported'}
+                </span>
+            </div>
+        </div>`;
+        html += '</div>';
+        
+        if (!support.webUSBSupported && !support.webSerialSupported) {
+            html += '<div class="alert alert-warning mt-2 mb-0">';
+            html += '<small><i class="fas fa-exclamation-triangle me-1"></i>';
+            html += 'Local printing not supported in this browser. Use Chrome or Edge for best compatibility.</small>';
+            html += '</div>';
+        } else if (!support.webUSBSupported || !support.webSerialSupported) {
+            html += '<div class="alert alert-info mt-2 mb-0">';
+            html += '<small><i class="fas fa-info-circle me-1"></i>';
+            html += 'Partial local printing support. Some printer types may not be available.</small>';
+            html += '</div>';
+        }
+        
+        statusDiv.innerHTML = html;
+    } else {
+        statusDiv.innerHTML = '<div class="alert alert-warning mb-0"><small>Browser compatibility check unavailable.</small></div>';
+    }
+}
+
+function togglePrintingMethod() {
+    const localRadio = document.querySelector('input[name="printing_method"][value="local"]');
+    const localConfig = document.getElementById('local-printer-config');
+    
+    if (localRadio && localConfig) {
+        const showLocalConfig = localRadio.checked;
+        localConfig.style.display = showLocalConfig ? 'block' : 'none';
+    }
+}
+
+function setupEventListeners() {
+    // Profile form submission with AJAX for better debugging
+    const profileForm = document.getElementById('profile-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // Prevent default form submission
+            console.log('Profile form submission triggered');
+            
+            // Log form data for debugging
+            const formData = new FormData(profileForm);
+            console.log('Form data being submitted:');
+            for (let [key, value] of formData.entries()) {
+                console.log(`  ${key}: ${value}`);
+            }
+            
+            const submitBtn = profileForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
+            submitBtn.disabled = true;
+            
+            // Submit via AJAX
+            fetch(window.location.pathname, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                }
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.text();
+            })
+            .then(html => {
+                console.log('Response received');
+                // Check if response contains success/error messages
+                if (html.includes('Profile updated successfully')) {
+                    showSuccessMessage('Profile updated successfully!');
+                    setTimeout(() => window.location.reload(), 1000);
+                } else if (html.includes('alert-danger') || html.includes('error')) {
+                    showPrinterError('Failed to save profile. Please check form errors.');
+                } else {
+                    console.log('Unknown response, reloading page');
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting form:', error);
+                showPrinterError('An error occurred while saving. Please try again.');
+            })
+            .finally(() => {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            });
+        });
+    }
+    
+    // Printing method radio buttons
+    document.querySelectorAll('input[name="printing_method"]').forEach(radio => {
+        radio.addEventListener('change', togglePrintingMethod);
+    });
+}
+
+function loadCurrentSettings() {
+    // Load current print settings from profile
+    const settings = {{ printer_settings|default:"{}"|safe }};
+    
+    console.log('📋 Loading current settings:', settings);
+}
+
+function showPrinterError(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+    
+    // Convert newlines to HTML breaks for better formatting
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    
+    alertDiv.innerHTML = `
+        ${formattedMessage}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-dismiss after 8 seconds (longer for error messages)
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 8000);
+}
+
+function showSuccessMessage(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-success alert-dismissible fade show';
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-dismiss after 3 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 3000);
+}
+</script>
+
+{% endblock %}

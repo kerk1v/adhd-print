@@ -51,7 +51,7 @@
                     </div>
                     <div class="row mt-3">
                         <div class="col text-center">
-                            <button id="printTodaysTasksBtn" class="btn btn-primary btn-lg">
+                            <button id="printTodaysTasksBtn" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#printTodaysTasksModal">
                                 <i class="fas fa-print me-2"></i>
                                 Print All Today's Tasks
                             </button>
@@ -195,25 +195,87 @@
     {% endif %}
 </div>
 
-<!-- Print Status Modal -->
-<div class="modal fade" id="printStatusModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+<!-- Enhanced Print Today's Tasks Modal -->
+<div class="modal fade" id="printTodaysTasksModal" tabindex="-1" aria-labelledby="printTodaysTasksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Print Status</h5>
+                <h5 class="modal-title" id="printTodaysTasksModalLabel">
+                    <i class="fas fa-print"></i> Print Today's Tasks
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="printStatusMessage"></div>
+                <div class="text-center mb-3">
+                    <i class="fas fa-calendar-day fa-3x text-primary mb-3"></i>
+                    <h6>Print all {{ total_printouts }} task{{ total_printouts|pluralize }} due today?</h6>
+                    <small class="text-muted">{{ today|date:"F j, Y" }}</small>
+                </div>
+                
+                <!-- Print Method Selection -->
+                <div class="mb-3" id="print-method-selection">
+                    <label class="form-label">Print Method:</label>
+                    <div class="print-method-options">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="todays_print_method" id="todays_local_print" value="local" checked>
+                            <label class="form-check-label" for="todays_local_print">
+                                <i class="fas fa-usb me-1"></i>Local Printer (USB/Serial)
+                                <small class="text-muted d-block">Print directly to connected thermal printer</small>
+                            </label>
+                        </div>
+                        <div class="form-check" id="server-print-option">
+                            <input class="form-check-input" type="radio" name="todays_print_method" id="todays_server_print" value="server">
+                            <label class="form-check-label" for="todays_server_print">
+                                <i class="fas fa-network-wired me-1"></i>Server Printer
+                                <small class="text-muted d-block">Print via network printer (requires server setup)</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Print Options -->
+                <div id="todays-print-options" class="mb-3">
+                    <div class="row justify-content-center">
+                        <div class="col-6">
+                            <label class="form-label text-center d-block">Width:</label>
+                            <select class="form-select form-select-sm" id="todays-print-width">
+                                <option value="80mm">80mm</option>
+                                <option value="57mm">57mm</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div id="todays-print-progress" class="mb-3" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Printing...</span>
+                        </div>
+                        <span id="todays-print-progress-text">Preparing to print...</span>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" role="progressbar" style="width: 0%" id="todays-print-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- Status Messages -->
+                <div id="todays-print-status-messages"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="todays-cancel-print-btn">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmTodaysPrintBtn">
+                    <i class="fas fa-print"></i> Print All Tasks
+                </button>
             </div>
         </div>
     </div>
 </div>
 
 {% load static %}
+<script src="{% static 'tasks/js/local-print-support.js' %}"></script>
 <script src="{% static 'tasks/js/todays-tasks.js' %}"></script>
 <script>
 // Set URL variable for external JavaScript
