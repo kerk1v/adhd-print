@@ -9,12 +9,49 @@ services:
     container_name: adhd-print-app
     ports:
       - "8000:8000"
+    # Environment file support (create .env file with your settings)
+    env_file:
+      - .env  # Optional: remove this line if not using .env file
     environment:
+      # === Django Configuration ===
       - DJANGO_SETTINGS_MODULE=adhd_print_project.settings
+      # Production security (uncomment and set for production)
+      # - SECRET_KEY=your-very-secret-key-here-change-this-in-production
+      # - DEBUG=False
+      # - ALLOWED_HOSTS=your-domain.com,localhost,127.0.0.1
+      
+      # === ASGI Server Configuration ===
       - ASGI_HOST=0.0.0.0
       - ASGI_PORT=8000
       - ASGI_WORKERS=2
       - ASGI_LOG_LEVEL=info
+      # - ASGI_RELOAD=false  # Set to true for development
+      
+      # === Database Configuration ===
+      - ADHD_PRINT_DATA_DIR=/app/data
+      - ADHD_PRINT_DB_NAME=adhd_print.db
+      
+      # === Printer Configuration ===
+      # Required: Set these for your thermal printer
+      # - ADHD_PRINT_PRINTER_HOST=192.168.1.40
+      # - ADHD_PRINT_PRINTER_PORT=9100
+      - ADHD_PRINT_USE_GRAPHICS=True
+      
+      # === Background Jobs Configuration ===
+      - BACKGROUND_JOBS_ENABLED=True
+      - MAINTENANCE_SCHEDULE_HOUR=2
+      - MAINTENANCE_SCHEDULE_MINUTE=0
+      
+      # === Python Configuration ===
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      
+      # === Timezone (optional) ===
+      - TZ=UTC
+      # Common alternatives:
+      # - TZ=America/New_York
+      # - TZ=Europe/London
+      # - TZ=Asia/Tokyo
     volumes:
       # Persist database
       - adhd_print_data:/app/data
@@ -35,6 +72,33 @@ volumes:
     driver: local
   adhd_print_logs:
     driver: local
+
+# === Configuration Guide ===
+# 
+# 1. Basic Setup:
+#    - Copy this file: cp docker-compose.ghcr.yml docker-compose.yml
+#    - Start: docker-compose up -d
+#    - Access: http://localhost:8000/tasks/
+#
+# 2. Environment Configuration:
+#    - Create .env file with your settings (see .env.example)
+#    - Or modify environment variables directly in this file
+#    - Remove the env_file line if not using .env
+#
+# 3. Printer Setup:
+#    - Uncomment and set ADHD_PRINT_PRINTER_HOST/PORT
+#    - Ensure printer is on same network as container
+#    - Test with: curl http://localhost:8000/tasks/
+#
+# 4. Production Setup:
+#    - Set SECRET_KEY, DEBUG=False, ALLOWED_HOSTS
+#    - Use external database (PostgreSQL recommended)
+#    - Add SSL termination (nginx/traefik)
+#    - Monitor logs: docker-compose logs -f adhd-print
+#
+# 5. Backup:
+#    - Database: docker run --rm -v adhd_print_data:/data -v $(pwd):/backup ubuntu tar czf /backup/backup.tar.gz /data
+#    - Restore: docker run --rm -v adhd_print_data:/data -v $(pwd):/backup ubuntu tar xzf /backup/backup.tar.gz -C /
 
 # Optional: Add nginx reverse proxy
 # nginx:
