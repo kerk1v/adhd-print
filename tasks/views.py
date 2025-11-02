@@ -569,6 +569,25 @@ def task_print(request, task_id):
     task = get_object_or_404(Task, id=task_id, owner=request.user)
 
     try:
+        # Get user's printing method preference
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile:
+            effective_method = user_profile.get_effective_printing_method()
+        else:
+            effective_method = 'server'  # Default fallback
+        
+        # Check if user wants local printing but it's not available
+        if effective_method == 'local':
+            # For now, we'll implement server-side printing
+            # Local printing will be implemented in JavaScript/frontend
+            return JsonResponse({
+                'success': False,
+                'message': 'Local printing not yet implemented. Please use server printing method.',
+                'print_method': 'local',
+                'fallback_to_server': True
+            })
+
+        # Use server-side printing (existing implementation)
         use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
 
         # Print the main task first
@@ -576,7 +595,8 @@ def task_print(request, task_id):
         if not success:
             return JsonResponse({
                 'success': False,
-                'message': message
+                'message': message,
+                'print_method': 'server'
             })
 
         # Get all child tasks (subtasks at any level)
@@ -612,13 +632,15 @@ def task_print(request, task_id):
 
         return JsonResponse({
             'success': success,
-            'message': message
+            'message': message,
+            'print_method': 'server'
         })
 
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'message': f'Print error: {str(e)}'
+            'message': f'Print error: {str(e)}',
+            'print_method': 'server'
         })
 
 
@@ -675,13 +697,30 @@ def print_todays_tasks(request):
         })
 
     try:
+        # Check user's printing method preference
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile:
+            effective_method = user_profile.get_effective_printing_method()
+        else:
+            effective_method = 'server'  # Default fallback
+        
+        # Check if user wants local printing but it's not available
+        if effective_method == 'local':
+            return JsonResponse({
+                'success': False,
+                'message': 'Local printing not yet implemented. Please use server printing method.',
+                'print_method': 'local',
+                'fallback_to_server': True
+            })
+
         # Get today's periodic task instances
         todays_tasks = get_todays_periodic_tasks(request.user)
 
         if not todays_tasks.exists():
             return JsonResponse({
                 'success': True,
-                'message': 'No recurring tasks due today'
+                'message': 'No recurring tasks due today',
+                'print_method': 'server'
             })
 
         use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
@@ -731,11 +770,13 @@ def print_todays_tasks(request):
 
         return JsonResponse({
             'success': success,
-            'message': message
+            'message': message,
+            'print_method': 'server'
         })
 
     except Exception as e:
         return JsonResponse({
             'success': False,
-            'message': f'Error printing today\'s tasks: {str(e)}'
+            'message': f'Error printing today\'s tasks: {str(e)}',
+            'print_method': 'server'
         })

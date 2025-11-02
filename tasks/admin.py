@@ -5,7 +5,7 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.db import models
-from .models import Task, MaintenanceLog
+from .models import Task, MaintenanceLog, UserProfile
 
 
 @admin.register(Task)
@@ -398,3 +398,53 @@ class MaintenanceLogAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         """Make logs read-only"""
         return False
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = [
+        'user',
+        'printing_method',
+        'local_printing_enabled',
+        'has_local_printer',
+        'created_at',
+        'updated_at'
+    ]
+    list_filter = [
+        'printing_method',
+        'local_printing_enabled',
+        'created_at'
+    ]
+    search_fields = ['user__username', 'user__email']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    fieldsets = (
+        ('User Information', {
+            'fields': ('user',)
+        }),
+        ('Printing Preferences', {
+            'fields': ('printing_method', 'local_printing_enabled'),
+            'description': 'Configure how this user prefers to print tasks'
+        }),
+        ('Local Printer Configuration', {
+            'fields': ('preferred_local_printer', 'printer_settings'),
+            'description': 'Local printer device settings and preferences',
+            'classes': ('collapse',)
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def has_local_printer(self, obj):
+        """Display if user has a local printer configured"""
+        if obj.has_local_printer_configured():
+            return format_html('<span style="color: green;">✓ Configured</span>')
+        return format_html('<span style="color: gray;">Not configured</span>')
+    has_local_printer.short_description = 'Local Printer'
+    has_local_printer.admin_order_field = 'preferred_local_printer'
+    
+    def get_queryset(self, request):
+        """Optimize queries by selecting related user"""
+        return super().get_queryset(request).select_related('user')

@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Task(models.Model):
@@ -435,3 +437,83 @@ class MaintenanceLog(models.Model):
         return f"{status} {
             self.timestamp.strftime('%Y-%m-%d %H:%M')} - {
             self.instances_created} instances created"
+
+
+class UserProfile(models.Model):
+    """
+    User profile with printing preferences and settings
+    """
+    PRINTING_METHODS = [
+        ('server', 'Server-based Printing'),
+        ('local', 'Local Printing (USB/Serial)'),
+        ('auto', 'Auto-detect Best Method'),
+    ]
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='profile'
+    )
+    printing_method = models.CharField(
+        max_length=10,
+        choices=PRINTING_METHODS,
+        default='server',
+        help_text="Preferred printing method"
+    )
+    preferred_local_printer = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Stored local printer configuration"
+    )
+    printer_settings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="General printer settings (paper size, quality, etc.)"
+    )
+    local_printing_enabled = models.BooleanField(
+        default=False,
+        help_text="Whether local printing is available for this user"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'User Profile'
+        verbose_name_plural = 'User Profiles'
+
+    def __str__(self):
+        return f"{self.user.username}'s Profile ({self.get_printing_method_display()})"
+
+    def get_effective_printing_method(self):
+        """
+        Determine the actual printing method to use based on user preference
+        and system capabilities
+        """
+        if self.printing_method == 'local' and self.local_printing_enabled:
+            return 'local'
+        elif self.printing_method == 'auto':
+            # In auto mode, prefer local if available, otherwise server
+            return 'local' if self.local_printing_enabled else 'server'
+        else:
+            return 'server'
+
+    def has_local_printer_configured(self):
+        """Check if user has a local printer configured"""
+        return bool(self.preferred_local_printer.get('device_id'))
+
+
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    """Create a UserProfile when a new User is created"""
+    if created:
+        UserProfile.objects.create(user=instance)
+
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    """Save the UserProfile when the User is saved"""
+    if hasattr(instance, 'profile'):
+        instance.profile.save()
+    else:
+        # Create profile if it doesn't exist (for existing users)
+        UserProfile.objects.get_or_create(user=instance)
