@@ -281,10 +281,17 @@ function performCompatibilityCheck() {
 
 // Auto-run compatibility check when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
+    // Global flag to prevent multiple compatibility checks across all instances
+    if (window.localPrintingCompatibilityChecked) {
+        return;
+    }
+    
     // Only run on pages where local printing might be relevant
     if (document.querySelector('.print-button') || 
         document.querySelector('#print-modal') ||
         window.location.pathname.includes('tasks')) {
+        
+        window.localPrintingCompatibilityChecked = true;
         
         // Delay slightly to ensure page is fully loaded
         setTimeout(() => {

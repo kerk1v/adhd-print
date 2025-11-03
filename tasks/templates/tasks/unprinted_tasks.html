@@ -207,13 +207,22 @@
 </div>
 
 {% load static %}
-<script src="{% static 'tasks/js/local-print-support.js' %}"></script>
 <script>
 // Set URL variable for external JavaScript
 const printUnprintedTasksUrl = "{% url 'print_unprinted_tasks' %}";
 
+// Prevent multiple initializations
+let unprintedTasksInitialized = false;
+
 // Unprinted tasks specific JavaScript
 document.addEventListener('DOMContentLoaded', function() {
+    if (unprintedTasksInitialized) {
+        console.log('Unprinted tasks already initialized, skipping...');
+        return;
+    }
+    
+    console.log('Initializing unprinted tasks functionality...');
+    unprintedTasksInitialized = true;
     const confirmBtn = document.getElementById('confirmUnprintedPrintBtn');
     const progressDiv = document.getElementById('unprinted-print-progress');
     const progressText = document.getElementById('unprinted-print-progress-text');
@@ -252,8 +261,11 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             progressBar.style.width = '100%';
             
+            console.log('Print response received:', data); // Debug log
+            
             if (data.success) {
                 if (data.print_method === 'local' && data.use_client_side) {
+                    console.log('Handling local printing with task data:', data.task_data); // Debug log
                     progressText.textContent = 'Processing for local printing...';
                     // Handle local printing
                     handleLocalPrinting(data.task_data, printerWidth)
@@ -264,9 +276,11 @@ document.addEventListener('DOMContentLoaded', function() {
                             }, 2000);
                         })
                         .catch(error => {
+                            console.error('Local printing error:', error); // Debug log
                             showStatusMessage('danger', 'Local printing failed: ' + error.message);
                         });
                 } else {
+                    console.log('Server printing completed:', data); // Debug log
                     progressText.textContent = 'Print completed!';
                     showStatusMessage('success', data.message);
                     setTimeout(() => {
@@ -300,17 +314,25 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle local printing (similar to todays-tasks)
     async function handleLocalPrinting(taskData, printerWidth) {
         try {
+            console.log('Starting handleLocalPrinting with:', { taskData, printerWidth }); // Debug log
+            
             // Check if local print manager is available
             if (typeof localPrintManager === 'undefined') {
+                console.error('localPrintManager not available'); // Debug log
                 throw new Error('Local printing not available. Please refresh the page or use server printing.');
             }
+            
+            console.log('localPrintManager available, checking status...'); // Debug log
             
             progressText.textContent = 'Connecting to printer...';
             progressBar.style.width = '40%';
             
             // Ensure printer connection
             const status = localPrintManager.getStatus();
+            console.log('Current printer status:', status); // Debug log
+            
             if (!status.connection.connected) {
+                console.log('Printer not connected, attempting auto-connect...'); // Debug log
                 // Try to auto-connect to last used printer
                 await autoConnectPrinter();
             }
@@ -326,11 +348,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 taskType: 'unprinted_tasks'
             };
             
+            console.log('Print options prepared:', printOptions); // Debug log
+            
             progressText.textContent = 'Sending to printer...';
             progressBar.style.width = '80%';
             
             // Print unprinted tasks using the printTasks method
+            console.log('Calling localPrintManager.printTasks...'); // Debug log
             const result = await localPrintManager.printTasks(taskData, printOptions);
+            console.log('Print result:', result); // Debug log
             
             progressBar.style.width = '100%';
             progressText.textContent = 'Print completed!';
@@ -339,6 +365,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 showStatusMessage('success', result.message);
                 
                 // Mark tasks as printed by calling a completion endpoint
+                console.log('Marking tasks as printed...'); // Debug log
                 await markTasksAsPrinted(taskData.map(task => task.id));
                 
                 setTimeout(() => {
@@ -349,8 +376,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
         } catch (error) {
+            console.error('handleLocalPrinting error:', error); // Debug log
+            
             // Try fallback to server printing if enabled
             if (await shouldFallbackToServer()) {
+                console.log('Attempting fallback to server printing...'); // Debug log
                 showStatusMessage('warning', 'Local printing failed. Falling back to server printing...');
                 await handleServerPrinting(printerWidth);
             } else {
