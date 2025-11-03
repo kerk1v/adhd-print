@@ -1,0 +1,44 @@
+Welcome to ADHD Print Task Manager!
+
+Hi {{ user.first_name }} {{ user.last_name }},
+
+Thank you for registering with ADHD Print Task Manager! To complete your registration and activate your account, please click the link below:
+
+{{ activation_url }}
+
+This activation link will expire in {{ expiry_days }} days.
+
+If you didn't create this account, you can safely ignore this email.
+
+What's Next?
+============
+
+Once your account is activated, you'll be able to:
+
+✓ Create and organize tasks with unlimited nesting (up to 3 levels)
+✓ Set priority levels and due dates
+✓ Print physical task reminders using thermal printers
+✓ Set up recurring tasks to build routines
+✓ Access ADHD-friendly features designed to support executive function
+
+Getting Started Tips:
+====================
+
+1. Start with a few simple tasks to get familiar with the interface
+2. Consider getting a thermal receipt printer for physical task reminders
+3. Use the priority levels to focus on what matters most
+4. Break large projects into smaller, manageable subtasks
+5. Set up daily or weekly recurring tasks for routine building
+
+Need Help?
+==========
+
+If you have any questions or need assistance, please don't hesitate to reach out.
+
+Welcome to the community!
+
+The ADHD Print Task Manager Team
+
+---
+This email was sent to {{ user.email }} because you registered for an account at {{ site_name }}.
+If you didn't request this, you can safely ignore this email.

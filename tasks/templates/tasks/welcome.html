@@ -36,8 +36,11 @@
                 </div>
             </div>
             {% if not user.is_authenticated %}
-                <a class="btn btn-primary btn-lg" href="/admin/login/" role="button">
-                    <i class="fas fa-sign-in-alt"></i> Login to Get Started
+                <a class="btn btn-primary btn-lg me-3" href="{% url 'accounts:register' %}" role="button">
+                    <i class="fas fa-user-plus"></i> Create Free Account
+                </a>
+                <a class="btn btn-outline-primary btn-lg" href="{% url 'accounts:login' %}" role="button">
+                    <i class="fas fa-sign-in-alt"></i> Login
                 </a>
             {% else %}
                 <a class="btn btn-primary btn-lg" href="{% url 'task_list' %}" role="button">

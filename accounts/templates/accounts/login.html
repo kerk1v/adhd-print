@@ -1,0 +1,94 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Login - ADHD Print Task Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-5">
+        <div class="card">
+            <div class="card-header text-center bg-success text-white">
+                <h3><i class="fas fa-sign-in-alt"></i> Welcome Back</h3>
+                <p class="mb-0">Sign in to your ADHD Print account</p>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger">
+                            {{ form.non_field_errors }}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Username -->
+                    <div class="form-group mb-3">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">
+                            <i class="fas fa-user text-primary"></i> Username
+                        </label>
+                        <input type="text" class="form-control" name="username" 
+                               placeholder="Enter your username" required>
+                        {% if form.username.errors %}
+                            <div class="text-danger small">{{ form.username.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Password -->
+                    <div class="form-group mb-3">
+                        <label for="{{ form.password.id_for_label }}" class="form-label">
+                            <i class="fas fa-lock text-primary"></i> Password
+                        </label>
+                        <input type="password" class="form-control" name="password" 
+                               placeholder="Enter your password" required>
+                        {% if form.password.errors %}
+                            <div class="text-danger small">{{ form.password.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Submit Button -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center">
+                <div class="row">
+                    <div class="col-12 mb-2">
+                        <a href="{% url 'accounts:password_reset' %}" class="text-muted">
+                            <i class="fas fa-key"></i> Forgot your password?
+                        </a>
+                    </div>
+                    <div class="col-12">
+                        <p class="mb-2">Don't have an account?</p>
+                        <a href="{% url 'accounts:register' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-user-plus"></i> Create Account
+                        </a>
+                    </div>
+                </div>
+                <hr>
+                <div class="small text-muted">
+                    <p class="mb-1"><strong>Account not activated?</strong></p>
+                    <a href="{% url 'accounts:resend_activation' %}" class="text-primary">
+                        <i class="fas fa-envelope"></i> Resend activation email
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADHD Support Info -->
+<div class="row justify-content-center mt-4">
+    <div class="col-md-7">
+        <div class="alert alert-info text-center">
+            <i class="fas fa-brain fa-2x text-primary mb-2"></i>
+            <h6>Designed for ADHD and Neurodivergent Minds</h6>
+            <p class="small mb-0">
+                This task manager creates physical task reminders through thermal printing, 
+                helping reduce decision fatigue and providing the external structure that supports executive function.
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
