@@ -1,0 +1,93 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Registration Complete - ADHD Print Task Manager{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-4">
+                    <i class="fas fa-envelope-open-text fa-4x text-success"></i>
+                </div>
+                <h2 class="card-title text-success">Check Your Email!</h2>
+                <p class="lead">
+                    We've sent you an activation link to complete your registration.
+                </p>
+                
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-info-circle"></i> What's Next?</h5>
+                    <ol class="text-left">
+                        <li class="mb-2">
+                            <strong>Check your email inbox</strong> (and spam folder, just in case)
+                        </li>
+                        <li class="mb-2">
+                            <strong>Look for an email</strong> from ADHD Print Task Manager
+                        </li>
+                        <li class="mb-2">
+                            <strong>Click the activation link</strong> in the email
+                        </li>
+                        <li class="mb-2">
+                            <strong>Start organizing your tasks!</strong> 🎉
+                        </li>
+                    </ol>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-clock text-warning"></i>
+                    <strong>Important:</strong> The activation link expires in 7 days. 
+                    Don't worry though - you can always request a new one!
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{% url 'accounts:resend_activation' %}" class="btn btn-outline-primary me-3">
+                        <i class="fas fa-paper-plane"></i> Didn't get the email? Resend it
+                    </a>
+                    <a href="{% url 'accounts:login' %}" class="btn btn-success">
+                        <i class="fas fa-sign-in-alt"></i> Already activated? Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADHD-friendly tips -->
+<div class="row justify-content-center mt-4">
+    <div class="col-md-8">
+        <div class="card bg-light">
+            <div class="card-header text-center">
+                <h5><i class="fas fa-lightbulb text-warning"></i> While You Wait...</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center">
+                        <i class="fas fa-print fa-2x text-primary mb-2"></i>
+                        <h6>Get a Thermal Printer</h6>
+                        <p class="small">
+                            Consider getting a cheap thermal receipt printer to make the most of this system. 
+                            Physical task cards are game-changers for ADHD!
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="fas fa-brain fa-2x text-success mb-2"></i>
+                        <h6>Think About Your Workflow</h6>
+                        <p class="small">
+                            Start planning how you'll organize your tasks. Think about your biggest projects 
+                            and how you might break them down into manageable pieces.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="fas fa-calendar fa-2x text-info mb-2"></i>
+                        <h6>Plan Your Routines</h6>
+                        <p class="small">
+                            Consider what recurring tasks would help build structure in your daily life. 
+                            Medication reminders, planning sessions, etc.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

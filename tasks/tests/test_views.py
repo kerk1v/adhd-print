@@ -678,7 +678,7 @@ class RecentFixesTests(TestCase):
         content = response.content.decode()
         
         # Should have logout form with CSRF token
-        self.assertIn('action="/admin/logout/"', content)
+        self.assertIn('action="/accounts/logout/"', content)
         self.assertIn('csrfmiddlewaretoken', content)
 
     def test_base_template_script_loading(self):
