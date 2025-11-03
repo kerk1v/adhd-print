@@ -11,7 +11,7 @@
                 <p class="mb-0">Sign in to your ADHD Print account</p>
             </div>
             <div class="card-body">
-                <form method="post">
+                <form method="post" id="login-form">
                     {% csrf_token %}
                     
                     {% if form.non_field_errors %}

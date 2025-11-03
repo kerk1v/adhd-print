@@ -234,13 +234,26 @@ $(document).ready(function() {
     initializePopovers();
     setupKeyboardShortcuts();
     
-    // Add loading states to buttons (except logout forms and profile forms)
+    // Add loading states to buttons (except logout forms, login forms, and profile forms)
     $(document).on('click', '.btn[type="submit"]:not([form*="logout"]):not(form[action*="logout"] .btn)', function() {
         const btn = $(this);
         const form = btn.closest('form');
         
         // Skip if this is a logout form
         if (form.attr('action') && form.attr('action').includes('logout')) {
+            return true; // Allow normal form submission
+        }
+        
+        // Skip if this is a login form (check action, current page, or form ID)
+        if ((form.attr('action') && form.attr('action').includes('login')) || 
+            window.location.pathname.includes('login') ||
+            form.attr('id') === 'login-form') {
+            return true; // Allow normal form submission
+        }
+        
+        // Skip if this is a registration form
+        if (window.location.pathname.includes('register') ||
+            form.attr('id') === 'registration-form') {
             return true; // Allow normal form submission
         }
         
