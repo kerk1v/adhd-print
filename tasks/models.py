@@ -26,6 +26,8 @@ class Task(models.Model):
     urgency = models.CharField(max_length=10, choices=URGENCY_LEVELS, default='normal')
     due_date = models.DateTimeField(blank=True, null=True)
     done = models.BooleanField(default=False)
+    is_printed = models.BooleanField(default=False, 
+                                   help_text="Whether this task has been printed")
     created_at = models.DateTimeField(auto_now_add=True)
     owner = models.ForeignKey(
         User,

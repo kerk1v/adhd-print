@@ -30,4 +30,7 @@ urlpatterns = [
     path('profile/test-printer/', views.test_printer_connection, name='test_printer_connection'),
     path('tasks/today/', views.todays_tasks, name='todays_tasks'),
     path('tasks/today/print/', views.print_todays_tasks, name='print_todays_tasks'),
+    path('tasks/unprinted/', views.unprinted_tasks, name='unprinted_tasks'),
+    path('tasks/unprinted/print/', views.print_unprinted_tasks, name='print_unprinted_tasks'),
+    path('tasks/mark-printed/', views.mark_tasks_printed, name='mark_tasks_printed'),
 ]

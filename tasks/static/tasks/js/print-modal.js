@@ -480,13 +480,17 @@ class PrintModalManager {
 // Initialize print modal manager
 let printModalManager = null;
 
-// Initialize when DOM is ready
+// Initialize when DOM is ready  
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
-        printModalManager = new PrintModalManager();
+        if (!printModalManager) {
+            printModalManager = new PrintModalManager();
+        }
     });
 } else {
-    printModalManager = new PrintModalManager();
+    if (!printModalManager) {
+        printModalManager = new PrintModalManager();
+    }
 }
 
 // Global function for backwards compatibility
