@@ -1,7 +1,27 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+
+
+class CustomAuthenticationForm(AuthenticationForm):
+    """Custom authentication form with Bootstrap styling"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Add Bootstrap classes and styling
+        self.fields['username'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Enter your username'
+        })
+        self.fields['password'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Enter your password'
+        })
+        
+        # Update help text
+        self.fields['username'].help_text = 'Enter the username you used when registering.'
 
 
 class UserRegistrationForm(UserCreationForm):

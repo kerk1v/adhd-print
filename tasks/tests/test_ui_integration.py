@@ -918,7 +918,7 @@ class LogoutFunctionalityTests(TestCase):
         self.assertEqual(response.status_code, 200)
         
         # Check that logout form is present
-        self.assertContains(response, 'action="/admin/logout/"')
+        self.assertContains(response, 'action="/accounts/logout/"')
         self.assertContains(response, 'method="post"')
         self.assertContains(response, 'Logout')
         self.assertContains(response, 'csrfmiddlewaretoken')
@@ -929,7 +929,7 @@ class LogoutFunctionalityTests(TestCase):
         self.assertEqual(response.status_code, 200)
         
         # Check that logout form is not present
-        self.assertNotContains(response, 'action="/admin/logout/"')
+        self.assertNotContains(response, 'action="/accounts/logout/"')
         self.assertContains(response, 'Login')  # Should see login link instead
 
     def test_logout_functionality_works(self):

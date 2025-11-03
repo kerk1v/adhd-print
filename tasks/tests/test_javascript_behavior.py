@@ -27,7 +27,7 @@ class JavaScriptIntegrationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         
         # Check that the logout form has the correct action
-        self.assertContains(response, 'action="/admin/logout/"')
+        self.assertContains(response, 'action="/accounts/logout/"')
         
         # Verify the common.js is loaded (should contain the fixed logic)
         self.assertContains(response, 'static/tasks/js/common.js')
@@ -87,7 +87,7 @@ class CommonJSBehaviorTests(TestCase):
         content = response.content.decode()
         
         # Should have logout form with correct action
-        self.assertIn('action="/admin/logout/"', content)
+        self.assertIn('action="/accounts/logout/"', content)
         self.assertIn('method="post"', content)
         
         # Should have submit button
