@@ -266,13 +266,19 @@ class PrintModalManager {
         try {
             this.updateProgress(30, 'Sending to server...');
             
-            // Use existing server printing endpoint
+            // Get printer width from the modal
+            const width = document.getElementById('print-width-modal').value;
+            
+            // Use existing server printing endpoint with printer width data
             const response = await fetch(`/tasks/print/${this.currentTask.id}/`, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                     'Content-Type': 'application/json',
-                }
+                },
+                body: JSON.stringify({
+                    printerWidth: width
+                })
             });
             
             this.updateProgress(70, 'Processing on server...');

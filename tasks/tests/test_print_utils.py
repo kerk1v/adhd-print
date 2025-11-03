@@ -144,8 +144,38 @@ class ImageCreationTests(PrintUtilsTestCase):
         # Verify image properties
         self.assertIsInstance(image, Image.Image)
         self.assertEqual(image.mode, '1')  # 1-bit black and white
-        self.assertEqual(image.width, 576)  # Expected width
+        self.assertEqual(image.width, 576)  # Expected width for 80mm default
         self.assertGreater(image.height, 100)  # Should have reasonable height
+
+    def test_create_task_image_80mm_width(self):
+        """Test image creation with explicit 80mm width."""
+        image = create_task_image(self.parent_task, printer_width='80mm')
+        
+        # Verify image properties
+        self.assertIsInstance(image, Image.Image)
+        self.assertEqual(image.mode, '1')
+        self.assertEqual(image.width, 576)  # Expected width for 80mm
+        self.assertGreater(image.height, 100)
+
+    def test_create_task_image_57mm_width(self):
+        """Test image creation with 57mm width."""
+        image = create_task_image(self.parent_task, printer_width='57mm')
+        
+        # Verify image properties
+        self.assertIsInstance(image, Image.Image)
+        self.assertEqual(image.mode, '1')
+        self.assertEqual(image.width, 400)  # Expected width for 57mm
+        self.assertGreater(image.height, 100)
+
+    def test_create_task_image_width_comparison(self):
+        """Test that 57mm images are narrower than 80mm images."""
+        image_80mm = create_task_image(self.parent_task, printer_width='80mm')
+        image_57mm = create_task_image(self.parent_task, printer_width='57mm')
+        
+        # 57mm should be narrower
+        self.assertLess(image_57mm.width, image_80mm.width)
+        self.assertEqual(image_80mm.width, 576)
+        self.assertEqual(image_57mm.width, 400)
 
     def test_create_task_image_with_hierarchy(self):
         """Test image creation with hierarchical task."""
@@ -428,6 +458,45 @@ class PrintTaskTests(PrintUtilsTestCase):
         self.assertIsInstance(sent_data, bytes)
         self.assertGreater(len(sent_data), 100)
 
+    @unittest.mock.patch('tasks.print_utils.socket.socket')
+    def test_print_task_with_80mm_width(self, mock_socket):
+        """Test printing task with explicit 80mm width."""
+        mock_sock = unittest.mock.Mock()
+        mock_socket.return_value.__enter__.return_value = mock_sock
+        
+        success, message = print_task(self.parent_task, printer_width='80mm')
+        self.assertTrue(success)
+        self.assertIn('80mm', message)
+        
+        # Verify socket was called
+        mock_sock.sendall.assert_called_once()
+
+    @unittest.mock.patch('tasks.print_utils.socket.socket')
+    def test_print_task_with_57mm_width(self, mock_socket):
+        """Test printing task with 57mm width."""
+        mock_sock = unittest.mock.Mock()
+        mock_socket.return_value.__enter__.return_value = mock_sock
+        
+        success, message = print_task(self.parent_task, printer_width='57mm')
+        self.assertTrue(success)
+        self.assertIn('57mm', message)
+        
+        # Verify socket was called  
+        mock_sock.sendall.assert_called_once()
+
+    @unittest.mock.patch('tasks.print_utils.socket.socket')
+    def test_print_task_width_backward_compatibility(self, mock_socket):
+        """Test that print_task works without width parameter (backward compatibility)."""
+        mock_sock = unittest.mock.Mock()
+        mock_socket.return_value.__enter__.return_value = mock_sock
+        
+        # Call without width parameter (should default to 80mm)
+        success, message = print_task(self.parent_task)
+        self.assertTrue(success)
+        
+        # Verify socket was called
+        mock_sock.sendall.assert_called_once()
+
 
 class PrintUtilsEdgeCasesTests(PrintUtilsTestCase):
     """Test edge cases and error conditions."""
@@ -629,8 +698,8 @@ class PrintModalIntegrationTests(PrintUtilsTestCase):
         self.assertTrue(data['success'])
         self.assertIn('printed successfully', data['message'])
         
-        # Verify print_task was called
-        mock_print_task.assert_called_once_with(test_task, use_graphics=True)
+        # Verify print_task was called with default printer width
+        mock_print_task.assert_called_once_with(test_task, use_graphics=True, printer_width='80mm')
 
     @unittest.mock.patch('tasks.views.print_task')
     def test_print_endpoint_failure(self, mock_print_task):

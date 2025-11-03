@@ -39,8 +39,8 @@ def test_print_endpoint_with_auth():
     # Force login (bypassing password check for testing)
     client.force_login(user)
     print("✅ User logged in successfully")
-    
-    # Test the print endpoint
+
+    # Test the print endpoint with default width (80mm)
     print(f"\n🔄 Testing print endpoint: /tasks/print/{task.id}/")
     
     response = client.post(
@@ -58,9 +58,41 @@ def test_print_endpoint_with_auth():
             
             if data.get('success'):
                 print("✅ Print endpoint working correctly!")
-                return True
             else:
                 print(f"❌ Print failed: {data.get('message', 'Unknown error')}")
+                return False
+                
+        except json.JSONDecodeError as e:
+            print(f"❌ Failed to parse JSON response: {e}")
+            print(f"📄 Raw response: {response.content.decode()[:200]}...")
+            return False
+    else:
+        print(f"❌ Print endpoint failed with status: {response.status_code}")
+        print(f"📄 Response content: {response.content.decode()[:200]}...")
+        return False
+
+    # Test the print endpoint with 57mm width
+    print(f"\n🔄 Testing print endpoint with 57mm: /tasks/print/{task.id}/")
+    
+    response = client.post(
+        f'/tasks/print/{task.id}/',
+        data=json.dumps({'printerWidth': '57mm'}),
+        content_type='application/json',
+        HTTP_X_REQUESTED_WITH='XMLHttpRequest'
+    )
+    
+    print(f"📊 Response status: {response.status_code}")
+    
+    if response.status_code == 200:
+        try:
+            data = json.loads(response.content.decode())
+            print(f"📄 Response data for 57mm: {json.dumps(data, indent=2)}")
+            
+            if data.get('success'):
+                print("✅ 57mm print endpoint working correctly!")
+                return True
+            else:
+                print(f"❌ 57mm print failed: {data.get('message', 'Unknown error')}")
                 return False
                 
         except json.JSONDecodeError as e:
