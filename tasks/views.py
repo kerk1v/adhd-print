@@ -698,6 +698,10 @@ def task_print(request, task_id):
 
         # Task printed successfully
         printed_count = 1
+        
+        # Mark task as printed
+        task.is_printed = True
+        task.save()
 
         # Update print log with results
         print_log.tasks_successful = printed_count
@@ -838,6 +842,363 @@ def todays_tasks(request):
     }
 
     return render(request, 'tasks/todays_tasks.html', context)
+
+
+@login_required
+def unprinted_tasks(request):
+    """Display all unprinted leaf tasks (final children with no subtasks)
+    
+    Excludes:
+    - Periodic task instances (generated from recurring tasks)
+    - Tasks that are children of periodic instances
+    """
+    
+    # Get all tasks owned by the user that are not printed and not done
+    all_tasks = Task.objects.filter(
+        owner=request.user,
+        is_printed=False,
+        done=False
+    ).order_by('-created_at')
+    
+    # Filter to only include leaf tasks (tasks with no children) 
+    # and exclude periodic instances and their descendants
+    leaf_tasks = []
+    processed_ids = set()
+    
+    def is_leaf_task(task):
+        """Check if task has no children (is a leaf task)"""
+        return not task.subtasks.exists()
+    
+    def is_periodic_instance_or_descendant(task):
+        """Check if task is a periodic instance or descendant of one"""
+        # Check if task itself is a periodic instance
+        if task.is_periodic_instance():
+            return True
+            
+        # Check if any ancestor is a periodic instance
+        current = task.parent
+        while current:
+            if current.is_periodic_instance():
+                return True
+            current = current.parent
+            
+        return False
+    
+    for task in all_tasks:
+        if (task.id not in processed_ids and 
+            is_leaf_task(task) and 
+            not is_periodic_instance_or_descendant(task)):
+            leaf_tasks.append(task)
+            processed_ids.add(task.id)
+    
+    # Calculate statistics
+    total_unprinted_leaf_tasks = len(leaf_tasks)
+    
+    context = {
+        'leaf_tasks': leaf_tasks,
+        'total_unprinted_leaf_tasks': total_unprinted_leaf_tasks,
+    }
+
+    return render(request, 'tasks/unprinted_tasks.html', context)
+
+
+@login_required
+def print_unprinted_tasks(request):
+    """Print all unprinted leaf tasks (final children with no subtasks)
+    
+    Excludes:
+    - Periodic task instances (generated from recurring tasks)
+    - Tasks that are children of periodic instances
+    """
+
+    if request.method != 'POST':
+        return JsonResponse({
+            'success': False,
+            'message': 'Only POST requests allowed'
+        })
+
+    # Start timing the operation
+    start_time = time.time()
+    
+    # Initialize print log variables
+    print_log = None
+    effective_method = 'server'  # Default
+
+    try:
+        # Parse request body for additional parameters
+        request_data = {}
+        if request.content_type == 'application/json' and request.body:
+            try:
+                request_data = json.loads(request.body.decode('utf-8'))
+            except json.JSONDecodeError:
+                pass
+        
+        # Get printer width from request_data (default to 80mm for backward compatibility)
+        printer_width = request_data.get('printerWidth', '80mm')
+        
+        # Check user's printing method preference
+        user_profile = getattr(request.user, 'profile', None)
+        if user_profile:
+            # Override with request data if provided
+            if 'print_method' in request_data:
+                effective_method = request_data['print_method']
+            else:
+                effective_method = user_profile.get_effective_printing_method()
+        else:
+            effective_method = request_data.get('print_method', 'server')  # Default fallback
+        
+        # Get all unprinted leaf tasks (excluding periodic instances)
+        all_tasks = Task.objects.filter(
+            owner=request.user,
+            is_printed=False,
+            done=False
+        ).order_by('-created_at')
+        
+        # Filter to only include leaf tasks (tasks with no children)
+        # and exclude periodic instances and their descendants
+        leaf_tasks = []
+        processed_ids = set()
+        
+        def is_leaf_task(task):
+            """Check if task has no children (is a leaf task)"""
+            return not task.subtasks.exists()
+        
+        def is_periodic_instance_or_descendant(task):
+            """Check if task is a periodic instance or descendant of one"""
+            # Check if task itself is a periodic instance
+            if task.is_periodic_instance():
+                return True
+                
+            # Check if any ancestor is a periodic instance
+            current = task.parent
+            while current:
+                if current.is_periodic_instance():
+                    return True
+                current = current.parent
+                
+            return False
+        
+        for task in all_tasks:
+            if (task.id not in processed_ids and 
+                is_leaf_task(task) and 
+                not is_periodic_instance_or_descendant(task)):
+                leaf_tasks.append(task)
+                processed_ids.add(task.id)
+
+        if not leaf_tasks:
+            # Create log entry for empty result
+            PrintLog.objects.create(
+                user=request.user,
+                print_method=effective_method,
+                print_type='unprinted_tasks',
+                success=True,
+                tasks_attempted=0,
+                tasks_successful=0,
+                error_message='No unprinted leaf tasks found',
+                duration_ms=int((time.time() - start_time) * 1000),
+                print_settings={'printer_width': printer_width}
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': 'No unprinted leaf tasks found',
+                'print_method': effective_method
+            })
+
+        # Create print log entry
+        print_log = None
+        try:            
+            print_log = PrintLog.objects.create(
+                user=request.user,
+                print_method=user_profile.printing_method if user_profile else effective_method,
+                print_type='unprinted_tasks',
+                tasks_attempted=len(leaf_tasks),
+                print_settings={
+                    'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
+                    'leaf_tasks_count': len(leaf_tasks),
+                    'printer_width': printer_width
+                },
+                printer_config={
+                    'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
+                    'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+                    'printer_width': printer_width
+                }
+            )
+        except (TypeError, ValueError, Exception):
+            # If logging fails (e.g., due to Mock objects in tests), skip logging
+            pass
+        
+        # Check if user wants server printing but it's not enabled
+        if (user_profile and 
+            user_profile.printing_method == 'server' and 
+            not user_profile.server_printing_enabled):
+            if print_log:
+                print_log.success = False
+                print_log.error_message = 'Server printing not enabled for this user. Please contact an administrator.'
+                print_log.tasks_successful = 0
+                print_log.duration_ms = int((time.time() - start_time) * 1000)
+                print_log.save()
+            
+            return JsonResponse({
+                'success': False,
+                'message': 'Server printing not enabled for this user. Please contact an administrator.',
+                'print_method': 'server',
+                'fallback_to_local': True
+            })
+        
+        # Check if user wants local printing - return task data for client-side processing
+        if effective_method == 'local':
+            # For local printing, return the task data to the client
+            leaf_tasks_data = []
+            for leaf_task in leaf_tasks:
+                # Get hierarchy information for this task
+                hierarchy = []
+                current = leaf_task
+                while current:
+                    hierarchy.append(current.title)  # Just store titles for compatibility
+                    current = current.parent
+                hierarchy.reverse()  # Root to leaf order
+                
+                task_data = {
+                    'id': leaf_task.id,
+                    'title': leaf_task.title,
+                    'description': leaf_task.description if leaf_task.description else '',
+                    'urgency': leaf_task.urgency,
+                    'due_date': leaf_task.due_date.isoformat() if leaf_task.due_date else None,
+                    'level': leaf_task.get_level() if hasattr(leaf_task, 'get_level') else 0,
+                    'created_at': leaf_task.created_at.isoformat() if hasattr(leaf_task, 'created_at') else None,
+                    'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
+                }
+                leaf_tasks_data.append(task_data)
+            
+            if print_log:
+                print_log.success = True
+                print_log.tasks_successful = len(leaf_tasks)
+                print_log.duration_ms = int((time.time() - start_time) * 1000)
+                print_log.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Task data prepared for local printing ({len(leaf_tasks)} task(s))',
+                'print_method': 'local',
+                'task_data': leaf_tasks_data,
+                'use_client_side': True
+            })
+
+        use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
+
+        printed_count = 0
+        failed_prints = []
+
+        # Print only the leaf tasks with selected printer width
+        for leaf_task in leaf_tasks:
+            success, message = print_task(leaf_task, use_graphics=use_graphics, printer_width=printer_width)
+            if success:
+                printed_count += 1
+                # Mark leaf task as printed
+                leaf_task.is_printed = True
+                leaf_task.save()
+            else:
+                failed_prints.append(f"{leaf_task.title}: {message}")
+
+        # Update print log with results
+        if print_log:
+            print_log.tasks_successful = printed_count
+            print_log.success = printed_count > 0 or len(leaf_tasks) == 0
+            if failed_prints:
+                print_log.error_message = "; ".join(failed_prints)
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+
+        # Prepare response
+        if failed_prints:
+            failure_details = "; ".join(failed_prints)
+            message = f'Printed {printed_count} unprinted leaf task(s). Failed prints: {failure_details}'
+            success = printed_count > 0
+        else:
+            message = f"Successfully printed {printed_count} unprinted leaf task(s)"
+            success = True
+
+        return JsonResponse({
+            'success': success,
+            'message': message,
+            'print_method': 'server'
+        })
+
+    except Exception as e:
+        # Update print log with error if it exists
+        if print_log:
+            print_log.success = False
+            print_log.error_message = f'Exception during print: {str(e)}'
+            print_log.tasks_successful = 0
+            print_log.duration_ms = int((time.time() - start_time) * 1000)
+            print_log.save()
+        else:
+            # Create emergency print log entry if logging is available
+            try:
+                PrintLog.objects.create(
+                    user=request.user,
+                    print_method=effective_method,
+                    print_type='unprinted_tasks',
+                    success=False,
+                    tasks_attempted=0,
+                    tasks_successful=0,
+                    error_message=f'Exception during print setup: {str(e)}',
+                    duration_ms=int((time.time() - start_time) * 1000)
+                )
+            except:
+                pass  # Don't let logging errors break the response
+        
+        return JsonResponse({
+            'success': False,
+            'message': f'Error printing unprinted tasks: {str(e)}',
+            'print_method': 'server'
+        })
+
+
+@require_POST
+@login_required
+def mark_tasks_printed(request):
+    """Mark specified tasks as printed (for local printing completion)"""
+    try:
+        import json
+        data = json.loads(request.body)
+        task_ids = data.get('task_ids', [])
+        
+        if not task_ids:
+            return JsonResponse({
+                'success': False,
+                'message': 'No task IDs provided'
+            })
+        
+        # Get tasks owned by the user
+        tasks = Task.objects.filter(
+            id__in=task_ids,
+            owner=request.user
+        )
+        
+        updated_count = 0
+        for task in tasks:
+            task.is_printed = True
+            task.save()
+            updated_count += 1
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Marked {updated_count} task(s) as printed',
+            'updated_count': updated_count
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid JSON data'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Error marking tasks as printed: {str(e)}'
+        })
 
 
 @login_required
@@ -1023,6 +1384,9 @@ def print_todays_tasks(request):
             success, message = print_task(leaf_task, use_graphics=use_graphics, printer_width=printer_width)
             if success:
                 printed_count += 1
+                # Mark leaf task as printed
+                leaf_task.is_printed = True
+                leaf_task.save()
             else:
                 failed_prints.append(f"{leaf_task.title}: {message}")
 

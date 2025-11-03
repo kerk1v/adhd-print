@@ -1,0 +1,460 @@
+{% extends 'tasks/base.html' %}
+{% load static %}
+
+{% block title %}Unprinted Tasks{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col">
+            <h1 class="h2">
+                <i class="fas fa-print me-2"></i>
+                Unprinted Tasks
+                <small class="text-muted">(Final Tasks Only - Excludes Recurring Tasks)</small>
+            </h1>
+        </div>
+    </div>
+
+    {% if leaf_tasks %}
+    <!-- Summary Card -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-list-check me-2"></i>
+                        Print Summary
+                    </h5>
+                    <div class="row text-center">
+                        <div class="col-12">
+                            <h3 class="text-info mb-0">{{ total_unprinted_leaf_tasks }}</h3>
+                            <small class="text-muted">Unprinted Final Task{{ total_unprinted_leaf_tasks|pluralize }}</small>
+                            <p class="text-muted mt-2 mb-0">
+                                <small>Only showing tasks with no subtasks (final/leaf tasks) that haven't been printed yet.<br>
+                                <strong>Excludes:</strong> Recurring task instances and their subtasks (use "Today's Tasks" for those)</small>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col text-center">
+                            <button id="printUnprintedTasksBtn" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#printUnprintedTasksModal">
+                                <i class="fas fa-print me-2"></i>
+                                Print All Unprinted Tasks
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task List -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tasks me-2"></i>
+                        Unprinted Final Tasks
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for task in leaf_tasks %}
+                    <div class="d-flex align-items-center mb-3 p-3 border rounded">
+                        <div class="me-3">
+                            {% if task.urgency == 'critical' %}
+                                <i class="fas fa-exclamation-triangle text-danger fa-lg" title="Critical"></i>
+                            {% elif task.urgency == 'urgent' %}
+                                <i class="fas fa-exclamation-circle text-warning fa-lg" title="Urgent"></i>
+                            {% elif task.urgency == 'normal' %}
+                                <i class="fas fa-circle text-info fa-lg" title="Normal"></i>
+                            {% else %}
+                                <i class="fas fa-circle text-secondary fa-lg" title="Low"></i>
+                            {% endif %}
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">{{ task.title }}</h6>
+                            {% if task.description %}
+                                <p class="text-muted mb-1 small">{{ task.description }}</p>
+                            {% endif %}
+                            {% if task.due_date %}
+                                <small class="text-muted">Due: {{ task.due_date|date:"M j, Y g:i A" }}</small>
+                            {% endif %}
+                            {% if task.parent %}
+                                <div class="mt-1">
+                                    <small class="text-muted">
+                                        <i class="fas fa-sitemap me-1"></i>
+                                        Hierarchy: 
+                                        {% with hierarchy=task.get_hierarchy_path %}
+                                            {% for level in hierarchy %}
+                                                {{ level.title }}{% if not forloop.last %} → {% endif %}
+                                            {% endfor %}
+                                        {% endwith %}
+                                    </small>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="ms-auto">
+                            <span class="badge bg-warning">Not Printed</span>
+                            <div class="mt-1">
+                                <small class="text-muted">Created: {{ task.created_at|date:"M j" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- No Unprinted Tasks -->
+    <div class="row">
+        <div class="col text-center">
+            <div class="card">
+                <div class="card-body py-5">
+                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                    <h3 class="text-muted">All Tasks Have Been Printed!</h3>
+                    <p class="text-muted">You don't have any unprinted final tasks.</p>
+                    <a href="{% url 'task_list' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>
+                        Back to Task List
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Enhanced Print Unprinted Tasks Modal -->
+<div class="modal fade" id="printUnprintedTasksModal" tabindex="-1" aria-labelledby="printUnprintedTasksModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="printUnprintedTasksModalLabel">
+                    <i class="fas fa-print"></i> Print Unprinted Tasks
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-print fa-3x text-primary mb-3"></i>
+                    <h6>Print all {{ total_unprinted_leaf_tasks }} unprinted task{{ total_unprinted_leaf_tasks|pluralize }}?</h6>
+                    <small class="text-muted">This will mark them as printed after successful printing</small>
+                </div>
+                
+                <!-- Print Method Selection -->
+                <div class="mb-3" id="print-method-selection">
+                    <label class="form-label">Print Method:</label>
+                    <div class="print-method-options">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="unprinted_print_method" id="unprinted_local_print" value="local" checked>
+                            <label class="form-check-label" for="unprinted_local_print">
+                                <i class="fas fa-usb me-1"></i>Local Printer (USB/Serial)
+                                <small class="text-muted d-block">Print directly to connected thermal printer</small>
+                            </label>
+                        </div>
+                        <div class="form-check" id="server-print-option">
+                            <input class="form-check-input" type="radio" name="unprinted_print_method" id="unprinted_server_print" value="server">
+                            <label class="form-check-label" for="unprinted_server_print">
+                                <i class="fas fa-network-wired me-1"></i>Server Printer
+                                <small class="text-muted d-block">Print via network printer (requires server setup)</small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Print Options -->
+                <div id="unprinted-print-options" class="mb-3">
+                    <div class="row justify-content-center">
+                        <div class="col-6">
+                            <label class="form-label text-center d-block">Width:</label>
+                            <select class="form-select form-select-sm" id="unprinted-print-width">
+                                <option value="80mm">80mm</option>
+                                <option value="57mm">57mm</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div id="unprinted-print-progress" class="mb-3" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Printing...</span>
+                        </div>
+                        <span id="unprinted-print-progress-text">Preparing to print...</span>
+                    </div>
+                    <div class="progress mt-2">
+                        <div class="progress-bar" role="progressbar" style="width: 0%" id="unprinted-print-progress-bar"></div>
+                    </div>
+                </div>
+                
+                <!-- Status Messages -->
+                <div id="unprinted-print-status-messages"></div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal" id="unprinted-cancel-print-btn">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmUnprintedPrintBtn">
+                    <i class="fas fa-print"></i> Print All Tasks
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% load static %}
+<script src="{% static 'tasks/js/local-print-support.js' %}"></script>
+<script>
+// Set URL variable for external JavaScript
+const printUnprintedTasksUrl = "{% url 'print_unprinted_tasks' %}";
+
+// Unprinted tasks specific JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmBtn = document.getElementById('confirmUnprintedPrintBtn');
+    const progressDiv = document.getElementById('unprinted-print-progress');
+    const progressText = document.getElementById('unprinted-print-progress-text');
+    const progressBar = document.getElementById('unprinted-print-progress-bar');
+    const statusMessages = document.getElementById('unprinted-print-status-messages');
+    const printMethodRadios = document.querySelectorAll('input[name="unprinted_print_method"]');
+    const printWidthSelect = document.getElementById('unprinted-print-width');
+
+    confirmBtn.addEventListener('click', function() {
+        // Get selected print method
+        const selectedMethod = document.querySelector('input[name="unprinted_print_method"]:checked').value;
+        const printerWidth = printWidthSelect.value;
+        
+        // Show progress
+        progressDiv.style.display = 'block';
+        confirmBtn.disabled = true;
+        progressText.textContent = 'Preparing to print...';
+        progressBar.style.width = '10%';
+
+        // Prepare request data
+        const requestData = {
+            print_method: selectedMethod,
+            printerWidth: printerWidth
+        };
+
+        // Make print request
+        fetch(printUnprintedTasksUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            progressBar.style.width = '100%';
+            
+            if (data.success) {
+                if (data.print_method === 'local' && data.use_client_side) {
+                    progressText.textContent = 'Processing for local printing...';
+                    // Handle local printing
+                    handleLocalPrinting(data.task_data, printerWidth)
+                        .then(() => {
+                            showStatusMessage('success', data.message);
+                            setTimeout(() => {
+                                location.reload(); // Refresh to update the task list
+                            }, 2000);
+                        })
+                        .catch(error => {
+                            showStatusMessage('danger', 'Local printing failed: ' + error.message);
+                        });
+                } else {
+                    progressText.textContent = 'Print completed!';
+                    showStatusMessage('success', data.message);
+                    setTimeout(() => {
+                        location.reload(); // Refresh to update the task list
+                    }, 2000);
+                }
+            } else {
+                progressText.textContent = 'Print failed!';
+                showStatusMessage('danger', data.message);
+            }
+        })
+        .catch(error => {
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Print failed!';
+            showStatusMessage('danger', 'Network error: ' + error.message);
+        })
+        .finally(() => {
+            confirmBtn.disabled = false;
+        });
+    });
+
+    function showStatusMessage(type, message) {
+        statusMessages.innerHTML = `
+            <div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+    }
+
+    // Handle local printing (similar to todays-tasks)
+    async function handleLocalPrinting(taskData, printerWidth) {
+        try {
+            // Check if local print manager is available
+            if (typeof localPrintManager === 'undefined') {
+                throw new Error('Local printing not available. Please refresh the page or use server printing.');
+            }
+            
+            progressText.textContent = 'Connecting to printer...';
+            progressBar.style.width = '40%';
+            
+            // Ensure printer connection
+            const status = localPrintManager.getStatus();
+            if (!status.connection.connected) {
+                // Try to auto-connect to last used printer
+                await autoConnectPrinter();
+            }
+            
+            progressText.textContent = 'Generating print commands...';
+            progressBar.style.width = '60%';
+            
+            // Prepare print options
+            const printOptions = {
+                mode: 'graphics',  // Always use graphics mode
+                allowFallback: false,  // No fallback needed
+                printerWidth: printerWidth,
+                taskType: 'unprinted_tasks'
+            };
+            
+            progressText.textContent = 'Sending to printer...';
+            progressBar.style.width = '80%';
+            
+            // Print unprinted tasks using the printTasks method
+            const result = await localPrintManager.printTasks(taskData, printOptions);
+            
+            progressBar.style.width = '100%';
+            progressText.textContent = 'Print completed!';
+            
+            if (result.success) {
+                showStatusMessage('success', result.message);
+                
+                // Mark tasks as printed by calling a completion endpoint
+                await markTasksAsPrinted(taskData.map(task => task.id));
+                
+                setTimeout(() => {
+                    location.reload(); // Refresh to update the task list
+                }, 1500);
+            } else {
+                throw new Error(result.error || 'Local print of unprinted tasks failed');
+            }
+            
+        } catch (error) {
+            // Try fallback to server printing if enabled
+            if (await shouldFallbackToServer()) {
+                showStatusMessage('warning', 'Local printing failed. Falling back to server printing...');
+                await handleServerPrinting(printerWidth);
+            } else {
+                throw error;
+            }
+        }
+    }
+    
+    // Auto-connect printer function (same as todays-tasks)
+    async function autoConnectPrinter() {
+        if (typeof localPrintManager !== 'undefined') {
+            try {
+                console.log('🔌 Connecting to printer via discovery...');
+                
+                // Try USB discovery first since most thermal printers are USB
+                console.log('🔌 Trying USB discovery first...');
+                let printers = await localPrintManager.printerManager.discoverPrinters('usb');
+                
+                // If no USB printers found, try serial as fallback
+                if (printers.length === 0) {
+                    console.log('🔌 No USB printers found, trying serial...');
+                    printers = await localPrintManager.printerManager.discoverPrinters('serial');
+                }
+                
+                if (printers.length > 0) {
+                    console.log('🔌 Found printer, connecting...', printers[0]);
+                    await localPrintManager.printerManager.connectToPrinter(printers[0]);
+                    console.log('🔌 Printer connected successfully');
+                } else {
+                    console.warn('🔌 No compatible printers found');
+                    throw new Error('No compatible printers found. Please ensure your printer is connected and try again.');
+                }
+            } catch (error) {
+                console.error('Auto-connect failed:', error);
+                throw error; // Re-throw to let calling code handle it
+            }
+        } else {
+            throw new Error('Local print manager not available');
+        }
+    }
+    
+    // Check if server printing fallback is available
+    async function shouldFallbackToServer() {
+        try {
+            const response = await fetch('/users/api/profile/');
+            if (response.ok) {
+                const profile = await response.json();
+                return profile.server_printing_enabled;
+            }
+        } catch (error) {
+            console.error('Error checking server printing availability:', error);
+        }
+        return false;
+    }
+    
+    // Handle server printing fallback
+    async function handleServerPrinting(printerWidth) {
+        const requestData = {
+            print_method: 'server',
+            printerWidth: printerWidth
+        };
+
+        const response = await fetch(printUnprintedTasksUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showStatusMessage('success', data.message);
+            setTimeout(() => {
+                location.reload();
+            }, 1500);
+        } else {
+            throw new Error(data.message || 'Server printing failed');
+        }
+    }
+    
+    // Mark tasks as printed after successful local printing
+    async function markTasksAsPrinted(taskIds) {
+        try {
+            const response = await fetch('/tasks/mark-printed/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({ task_ids: taskIds })
+            });
+            
+            if (!response.ok) {
+                console.warn('Failed to mark tasks as printed on server');
+            }
+        } catch (error) {
+            console.warn('Failed to mark tasks as printed:', error);
+        }
+    }
+});
+</script>
+
+{% csrf_token %}
+{% endblock %}
