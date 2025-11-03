@@ -267,6 +267,9 @@ This comprehensive user guide will help you effectively use the ADHD Print Task 
 - **Dual Printing Methods**: 
   - **🖨️ Local Printing**: Direct browser-to-printer via WebUSB/WebSerial (Chrome/Edge)
   - **🌐 Server Printing**: Traditional network printer support (all browsers)
+- **Multi-Width Printer Support**: 
+  - **📏 80mm Printers**: Standard thermal printers with full-size layouts
+  - **📏 57mm Printers**: Compact Chinese receipt printers with optimized layouts
 - **Smart Print Fallback**: Automatic fallback from local to server printing
 - **Print Modal**: Automatic "Print this task?" prompt after creating tasks
 - **Professional Layout**: High-quality thermal printer output with Material Design icons and borders
@@ -463,6 +466,11 @@ The ADHD Print system now supports **dual printing methods** with smart fallback
 - **Professional Layout**: Bordered output with task hierarchy and urgency indicators
 
 ### **⚙️ Technical Capabilities**
+- **Dual Printer Width Support**: Full support for both 80mm and 57mm thermal printers
+  - **80mm Printers**: Standard thermal printers with 576px width, full-size layouts
+  - **57mm Printers**: Compact Chinese receipt printers with 375px width, optimized layouts
+- **Width-Adaptive Layouts**: Automatic font scaling, margin adjustment, and content optimization
+- **Smart Paper Feed**: Printer-specific feed management (10mm for 57mm, standard for 80mm)
 - **ESC/POS Command Generation**: Both client-side and server-side generation
 - **Graphics Mode**: High-quality bitmap printing with Material Design icons
 - **Graphics Mode**: High-quality bitmap printing via server-side generation
@@ -481,9 +489,11 @@ export ADHD_PRINT_USE_GRAPHICS=True
 ```
 
 ### **✅ Tested Hardware**
-- **Primary**: Qian QOP-T80UL-RI-02
+- **Primary 80mm**: Qian QOP-T80UL-RI-02
+- **57mm Chinese Printers**: Cheap thermal receipt printers (375px width)
 - **Compatible**: Most ESC/POS thermal receipt printers (Epson, Star, Citizen)
 - **Connections**: USB, Serial, and Network TCP/IP
+- **Width Auto-Detection**: Automatic layout optimization based on printer width selection
 
 For complete printing system documentation, see **[LOCAL_PRINT.md](LOCAL_PRINT.md)**.
 
