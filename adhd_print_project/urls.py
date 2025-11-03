@@ -34,9 +34,9 @@ except (ImportError, ModuleNotFoundError):
     pass
 
 # Customize admin site
-admin.site.site_header = "Task Management Admin"
-admin.site.site_title = "Task Management"
-admin.site.index_title = "Welcome to Task Management Administration"
+admin.site.site_header = "ADHD Print Task Manager Admin"
+admin.site.site_title = "ADHD Print Task Manager"
+admin.site.index_title = "Welcome to ADHD Print Administration"
 
 
 class CustomLoginView(auth_views.LoginView):
