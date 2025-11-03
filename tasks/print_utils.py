@@ -50,12 +50,49 @@ def get_task_hierarchy(task):
     return hierarchy
 
 
-def create_task_image(task):
-    """Create a simple, thermal-printer optimized image"""
-    # Use conservative width that works - we can scale up gradually
-    # Start with 576 pixels which worked before, then adjust
-    width = 576  # Conservative width that we know works
-    height = 800  # Increased height for larger title font
+def create_task_image(task, printer_width='80mm'):
+    """Create a thermal-printer optimized image with adaptive width
+    
+    Args:
+        task: Django task model instance
+        printer_width (str): '80mm' or '57mm' for printer paper width
+        
+    Returns:
+        PIL Image: 1-bit image optimized for thermal printing
+    """
+    # Debug logging to see what width parameter is being received
+    print(f"🖨️ DEBUG: create_task_image called with printer_width='{printer_width}'")
+    
+    # Calculate dimensions based on printer width at 203 DPI
+    # 80mm = ~640px, 57mm = ~456px at 203 DPI, but use conservative values
+    if printer_width == '57mm':
+        width = 375  # Reduced from 400px to account for 5mm physical margins on each side
+        # Scale fonts down for narrower format
+        title_font_size = 38  # Further reduced to fit narrower width
+        regular_font_size = 24  # Slightly reduced
+        parents_label_font_size = 17  # Slightly reduced
+        parents_text_font_size = 21  # Slightly reduced
+        margin = 20  # Increased margins to ensure content fits within physical limits
+        line_spacing = 26  # Slightly reduced for tighter layout
+        icon_margin = 15  # Increased to prevent icon cutoff
+        top_feed = 20  # Minimal top padding within image (actual feed in ESC/POS)
+        bottom_padding = 5  # Minimal bottom padding for 57mm
+        print(f"🖨️ DEBUG: Using 57mm settings - width={width}, title_font={title_font_size}")
+    else:  # 80mm (default)
+        width = 576  # Conservative width that works for 80mm
+        # Keep original font sizes
+        title_font_size = 52
+        regular_font_size = 26
+        parents_label_font_size = 24
+        parents_text_font_size = 30
+        margin = 28
+        line_spacing = 35
+        icon_margin = 20
+        top_feed = 30  # Keep original top padding for 80mm
+        bottom_padding = 25  # Keep original bottom padding for 80mm
+        print(f"🖨️ DEBUG: Using 80mm settings - width={width}, title_font={title_font_size}")
+    
+    height = 800  # Initial height, will be adjusted as needed
 
     # Create image with white background
     img = Image.new('1', (width, height), 1)  # Start as 1-bit image
@@ -76,76 +113,76 @@ def create_task_image(task):
             'fonts',
             'Roboto-Bold.ttf')
 
-        font = ImageFont.truetype(font_path, 26)
-        title_font = ImageFont.truetype(font_path, 52)  # Double size for title
+        font = ImageFont.truetype(font_path, regular_font_size)
+        title_font = ImageFont.truetype(font_path, title_font_size)
 
         # New fonts for enhanced Parents section
         try:
             parents_label_font = ImageFont.truetype(
-                bold_font_path, 24)  # Bold 24pt for "Parents" label
+                bold_font_path, parents_label_font_size)  # Bold for "Parents" label
         except BaseException:
             parents_label_font = ImageFont.truetype(
-                font_path, 24)  # Fallback to regular
+                font_path, parents_label_font_size)  # Fallback to regular
         parents_text_font = ImageFont.truetype(
-            font_path, 30)  # 30pt for parent task names
+            font_path, parents_text_font_size)  # For parent task names
     except BaseException:
         try:
             # Fallback to system fonts
-            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 26)
-            title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 52)
+            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", regular_font_size)
+            title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", title_font_size)
 
             # Try to get bold system font
             try:
                 parents_label_font = ImageFont.truetype(
-                    "/System/Library/Fonts/Helvetica-Bold.ttc", 24)
+                    "/System/Library/Fonts/Helvetica-Bold.ttc", parents_label_font_size)
             except BaseException:
                 parents_label_font = ImageFont.truetype(
-                    "/System/Library/Fonts/Helvetica.ttc", 24)
+                    "/System/Library/Fonts/Helvetica.ttc", parents_label_font_size)
             parents_text_font = ImageFont.truetype(
-                "/System/Library/Fonts/Helvetica.ttc", 30)
+                "/System/Library/Fonts/Helvetica.ttc", parents_text_font_size)
         except BaseException:
             try:
-                font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 26)
-                title_font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 52)
+                font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", regular_font_size)
+                title_font = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", title_font_size)
 
                 # Try to get bold Arial
                 try:
                     parents_label_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Arial-Bold.ttf", 24)
+                        "/System/Library/Fonts/Arial-Bold.ttf", parents_label_font_size)
                 except BaseException:
                     parents_label_font = ImageFont.truetype(
-                        "/System/Library/Fonts/Arial.ttf", 24)
+                        "/System/Library/Fonts/Arial.ttf", parents_label_font_size)
                 parents_text_font = ImageFont.truetype(
-                    "/System/Library/Fonts/Arial.ttf", 30)
+                    "/System/Library/Fonts/Arial.ttf", parents_text_font_size)
             except BaseException:
                 try:
                     # Linux font fallbacks (for Docker containers)
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 26)
-                    title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 52)
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", regular_font_size)
+                    title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", title_font_size)
 
                     # Try to get bold DejaVu
                     try:
                         parents_label_font = ImageFont.truetype(
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+                            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", parents_label_font_size)
                     except BaseException:
                         parents_label_font = ImageFont.truetype(
-                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
+                            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", parents_label_font_size)
                     parents_text_font = ImageFont.truetype(
-                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
+                        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", parents_text_font_size)
                 except BaseException:
                     try:
                         # Try Liberation fonts (also common in Linux)
-                        font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 26)
-                        title_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 52)
+                        font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", regular_font_size)
+                        title_font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", title_font_size)
 
                         try:
                             parents_label_font = ImageFont.truetype(
-                                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", 24)
+                                "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf", parents_label_font_size)
                         except BaseException:
                             parents_label_font = ImageFont.truetype(
-                                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 24)
+                                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", parents_label_font_size)
                         parents_text_font = ImageFont.truetype(
-                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", 30)
+                            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf", parents_text_font_size)
                     except BaseException:
                         # Final fallback to default font
                         font = ImageFont.load_default()
@@ -153,13 +190,13 @@ def create_task_image(task):
                         parents_label_font = font
                         parents_text_font = font
 
-    # Layout with larger spacing for 26pt font
-    current_y = 30  # More top padding for larger content
-    line_spacing = 35  # Larger line spacing for 26pt font
-    margin = 28  # Larger margins for better layout
-
-    # Draw a border that fits within the printable area - will be redrawn at the end
-    # (Initial border is just for reference, final border will be properly sized)
+    # Layout with calculated spacing based on printer width
+    current_y = top_feed  # Top padding (2cm for 57mm, original for 80mm)
+    
+    # Add extra space for 57mm to accommodate the urgency icon (85x85)
+    if printer_width == '57mm':
+        current_y += 90  # Move title down to avoid icon overlap (85px icon + 5px margin)
+    
     border_thickness = 4
 
     # Add urgency icon in top right corner using Material Design icons
@@ -174,8 +211,8 @@ def create_task_image(task):
         if icon.mode != '1':
             icon = icon.convert('1', dither=Image.FLOYDSTEINBERG)
 
-        # Position icon in top right corner with some margin
-        icon_x = width - icon.width - 20  # 20px margin from right edge
+        # Position icon in top right corner with margin based on printer width
+        icon_x = width - icon.width - icon_margin
         icon_y = 15  # 15px margin from top
 
         # Paste the icon onto the image
@@ -265,8 +302,7 @@ def create_task_image(task):
 
         # Draw underline for "Parents" label
         # Use font size to calculate proper underline position
-        font_size = 24  # parents_label_font size
-        underline_y = current_y + font_size + 2  # Position below the text baseline
+        underline_y = current_y + parents_label_font_size + 2  # Position below the text baseline
         underline_start_x = label_x
         underline_end_x = label_x + label_width
         draw.line([(underline_start_x, underline_y),
@@ -313,13 +349,13 @@ def create_task_image(task):
                     line_width = bbox[2] - bbox[0]
                     line_x = (width - line_width) // 2  # Center horizontally
                     draw.text((line_x, current_y), line, fill=0, font=parents_text_font)
-                    current_y += 38  # Line spacing for 30pt font
+                    current_y += int(parents_text_font_size * 1.3)  # Line spacing based on font size
             else:
                 # Single line - center it
                 task_x = (width - task_width) // 2  # Center horizontally
                 draw.text((task_x, current_y), parent_task,
                           fill=0, font=parents_text_font)
-                current_y += 38  # Line spacing for 30pt font
+                current_y += int(parents_text_font_size * 1.3)  # Line spacing based on font size
 
         # Draw separator
         draw.line([(margin, current_y), (width - margin, current_y)], fill=0, width=1)
@@ -358,13 +394,13 @@ def create_task_image(task):
             lines.append(current_line.strip())
 
         for line in lines:
-            # Use larger title font
+            # Use title font
             draw.text((margin, current_y), line, fill=0, font=title_font)
-            current_y += 60  # Larger line spacing for 52pt font
+            current_y += int(title_font_size * 1.2)  # Line spacing based on title font size
     else:
-        # Use larger title font
+        # Use title font
         draw.text((margin, current_y), title, fill=0, font=title_font)
-        current_y += 60  # Reduced spacing after title
+        current_y += int(title_font_size * 1.1)  # Spacing after title based on font size
 
     # Draw separator
     draw.line([(margin, current_y), (width - margin, current_y)], fill=0, width=1)
@@ -373,7 +409,9 @@ def create_task_image(task):
     # Draw description if exists
     if task.description:
         desc = task.description
-        max_chars_per_line = 30  # Characters for 26pt font
+        # Calculate max characters per line based on width and font size
+        # Rough estimate: ~20 chars per line for 57mm, ~30 for 80mm
+        max_chars_per_line = 20 if printer_width == '57mm' else 30
 
         if len(desc) > max_chars_per_line:
             # Word wrapping for description
@@ -420,10 +458,11 @@ def create_task_image(task):
         draw = ImageDraw.Draw(img)
 
     # Draw the complete border now that we know the final dimensions
-    border_left = 10
-    border_top = 10
-    border_right = width - 11
-    border_bottom = current_y + 20
+    border_margin = 5 if printer_width == '57mm' else 10  # Smaller border margin for 57mm
+    border_left = border_margin
+    border_top = border_margin
+    border_right = width - border_margin - 1
+    border_bottom = current_y + (10 if printer_width == '57mm' else 20)  # Less space for 57mm
 
     # Draw border as separate lines to avoid protrusion issues
     # Top border
@@ -439,14 +478,15 @@ def create_task_image(task):
     draw.rectangle([border_right - border_thickness + 1,
                    border_top, border_right, border_bottom], fill=0)
 
-    # Crop to actual content with proper padding
-    final_height = current_y + 25  # Extra padding at bottom for larger content
+    # Crop to actual content with proper padding (ensure border is included)
+    border_space = 10 if printer_width == '57mm' else 20
+    final_height = current_y + border_space + 5  # Extra 5px to ensure border is visible
     final_img = img.crop((0, 0, width, final_height))
 
     return final_img
 
 
-def convert_image_to_escp(image):
+def convert_image_to_escp(image, printer_width='80mm'):
     """Convert PIL image to ESC/POS commands using simple 8-dot graphics for thermal printers"""
     # Convert to 1-bit (black and white) with better dithering
     bw_image = image.convert('1', dither=Image.FLOYDSTEINBERG)
@@ -457,6 +497,11 @@ def convert_image_to_escp(image):
 
     # Initialize printer (ESC/POS)
     commands.append(b'\x1B\x40')  # ESC @ (Initialize printer)
+    
+    # Add top feed for 57mm printers (10mm ≈ 4 line feeds at 8 lines per cm)
+    if printer_width == '57mm':
+        for _ in range(4):  # 10mm top feed (reduced from 20mm)
+            commands.append(b'\x0A')  # Line feed
 
     # Use simpler 8-dot single-density graphics (most compatible)
     # ESC/POS: ESC * 0 nL nH [data...]
@@ -488,14 +533,19 @@ def convert_image_to_escp(image):
         # Line feed to next row
         commands.append(b'\x0A')  # LF
 
-    # Add some space and cut
-    commands.append(b'\x0A\x0A')
-    commands.append(b'\x1D\x56\x00')  # GS V 0 (Full cut)
+    # Add some space and cut only for 80mm printers (57mm usually don't have cutters)
+    if printer_width == '80mm':
+        commands.append(b'\x0A\x0A')  # Line feeds
+        commands.append(b'\x1D\x56\x00')  # GS V 0 (Full cut)
+    else:
+        # For 57mm printers, add 10mm bottom feed (4 line feeds)
+        for _ in range(4):  # 10mm bottom feed
+            commands.append(b'\x0A')
 
     return b''.join(commands)
 
 
-def convert_image_to_bitmap_escp(image):
+def convert_image_to_bitmap_escp(image, printer_width='80mm'):
     """Alternative: Convert PIL image using GS v 0 bitmap command (more reliable)"""
     # Convert to 1-bit black and white
     bw_image = image.convert('1', dither=Image.FLOYDSTEINBERG)
@@ -506,6 +556,11 @@ def convert_image_to_bitmap_escp(image):
 
     # Initialize printer
     commands.append(b'\x1B\x40')  # ESC @ (Initialize printer)
+    
+    # Add top feed for 57mm printers (10mm ≈ 4 line feeds at 8 lines per cm)
+    if printer_width == '57mm':
+        for _ in range(4):  # 10mm top feed (reduced from 20mm)
+            commands.append(b'\x0A')  # Line feed
 
     # Use GS v 0 command for bitmap printing (most reliable method)
     # GS v 0 m xL xH yL yH [data...]
@@ -538,188 +593,36 @@ def convert_image_to_bitmap_escp(image):
     commands.append(bytes([xL, xH, yL, yH]))
     commands.append(bytes(bitmap_data))
 
-    # Add more feeding for proper cutting (thermal printers need extra space)
-    # 10 line feeds for better cutting space
-    commands.append(b'\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A')
-
-    # Full cut command
-    commands.append(b'\x1D\x56\x00')  # GS V 0 (Full cut)
+    # Add feeding and cutting only for 80mm printers (57mm usually don't have cutters)
+    if printer_width == '80mm':
+        # Add more feeding for proper cutting (thermal printers need extra space)
+        # 10 line feeds for better cutting space
+        commands.append(b'\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A\x0A')
+        # Full cut command
+        commands.append(b'\x1D\x56\x00')  # GS V 0 (Full cut)
+    else:
+        # For 57mm printers, add 10mm bottom feed (4 line feeds)
+        for _ in range(4):  # 10mm bottom feed
+            commands.append(b'\x0A')
 
     return b''.join(commands)
 
 
-
-
-def print_task(task, use_graphics=True):
-
-    # Set font to Font A (default)
-    commands.append(b'\x1B\x4D\x00')  # ESC M 0 (Font A)
-
-    # Draw border with text characters
-    border_line = "=" * 42 + "\n"
-    commands.append(border_line.encode('utf-8'))
-
-    # Add urgency indicator in text mode (simple symbols)
-    urgency_symbols = {
-        'critical': '[!!!]',
-        'urgent': '[!!] ',
-        'normal': '[!]  ',
-        'low': '[ ]  '
-    }
-    urgency_symbol = urgency_symbols.get(task.urgency, '[?]  ')
-
-    # Position urgency symbol at the end of the top border
-    top_line = "=" * 35 + urgency_symbol + "\n"
-    commands.pop()  # Remove the previous border line
-    commands.append(top_line.encode('utf-8'))
-
-    # Due date without emphasis
-    if hasattr(task, 'due_date') and task.due_date:
-        from django.utils import timezone
-        # Format the due date
-        due_date_str = task.due_date.strftime("%Y-%m-%d")
-        # Check if it's overdue
-        if task.due_date.date() < timezone.now().date():
-            due_text = f"DUE: {due_date_str} (OVERDUE!)"
-        elif task.due_date.date() == timezone.now().date():
-            due_text = f"DUE: {due_date_str} (TODAY!)"
-        else:
-            due_text = f"DUE: {due_date_str}"
-    else:
-        due_text = "DUE: Not set"
-
-    commands.append(f"{due_text}\n".encode('utf-8'))
-
-    commands.append(("-" * 42 + "\n").encode('utf-8'))
-
-    # Get task hierarchy
-    hierarchy = get_task_hierarchy(task)
-
-    # Print hierarchy path
-    if len(hierarchy) > 1:
-        # Text mode: Center "Parents" with underline, then list each parent task
-        # centered
-
-        # Center and underline "Parents" label
-        parents_label = "Parents"
-        label_padding = (42 - len(parents_label)) // 2
-        centered_label = " " * label_padding + parents_label
-        commands.append(f"{centered_label}\n".encode('utf-8'))
-
-        # Add underline using dashes
-        underline = " " * label_padding + "-" * len(parents_label)
-        commands.append(f"{underline}\n".encode('utf-8'))
-
-        # Add each parent task on its own line, centered
-        parent_tasks = hierarchy[:-1]  # All except the current task
-
-        for parent_task in parent_tasks:
-            # Check if task name needs wrapping (42 chars is full width, use 40 to be
-            # safe)
-            if len(parent_task) > 40:
-                # Word wrap the task name
-                words = parent_task.split()
-                lines = []
-                current_line = ""
-
-                for word in words:
-                    if len(current_line + word + " ") <= 40:
-                        current_line += word + " "
-                    else:
-                        if current_line:
-                            lines.append(current_line.strip())
-                        current_line = word + " "
-
-                if current_line:
-                    lines.append(current_line.strip())
-
-                # Center each line
-                for line in lines:
-                    line_padding = (42 - len(line)) // 2
-                    centered_line = " " * line_padding + line
-                    commands.append(f"{centered_line}\n".encode('utf-8'))
-            else:
-                # Single line - center it
-                task_padding = (42 - len(parent_task)) // 2
-                centered_task = " " * task_padding + parent_task
-                commands.append(f"{centered_task}\n".encode('utf-8'))
-
-        commands.append(("-" * 42 + "\n").encode('utf-8'))
-
-    # Print task title with centering (using ESC/POS alignment commands)
-    # Send center alignment command
-    commands.append(b'\x1B\x61\x01')  # ESC a 1 (Center align)
-    
-    # Word wrap title for normal text (42 chars per line, use 40 to be safe)
-    title = task.title
-    if len(title) > 40:
-        words = title.split()
-        lines = []
-        current_line = ""
-        for word in words:
-            test_line = current_line + (" " if current_line else "") + word
-            if len(test_line) <= 40:
-                current_line = test_line
-            else:
-                if current_line:
-                    lines.append(current_line)
-                current_line = word
-        if current_line:
-            lines.append(current_line)
-
-        for line in lines:
-            commands.append(f"{line}\n".encode('utf-8'))
-    else:
-        commands.append(f"{title}\n".encode('utf-8'))
-    
-    # Reset to left alignment
-    commands.append(b'\x1B\x61\x00')  # ESC a 0 (Left align)
-    commands.append(("-" * 42 + "\n").encode('utf-8'))
-
-    # Print description
-    if task.description:
-        desc = task.description
-        if len(desc) > 42:
-            words = desc.split()
-            lines = []
-            current_line = ""
-            for word in words:
-                if len(current_line + word) <= 39:
-                    current_line += word + " "
-                else:
-                    if current_line:
-                        lines.append(current_line.strip())
-                    current_line = word + " "
-            if current_line:
-                lines.append(current_line.strip())
-
-            for line in lines:
-                commands.append(f"{line}\n".encode('utf-8'))
-        else:
-            commands.append(f"{desc}\n".encode('utf-8'))
-        commands.append(("-" * 42 + "\n").encode('utf-8'))
-
-    # Close border
-    commands.append(border_line.encode('utf-8'))
-
-    # Add space and cut (ESC/POS)
-    commands.append(b'\x0A\x0A')
-    commands.append(b'\x1D\x56\x00')  # GS V 0 (Full cut)
-
-def print_task(task, use_graphics=True):
+def print_task(task, use_graphics=True, printer_width='80mm'):
     """
     Print a task to the configured ESC/POS thermal printer.
 
     Args:
         task: Django task model instance with urgency, title, description, due_date
         use_graphics (bool): True for graphics mode (default), False for text mode
+        printer_width (str): '80mm' or '57mm' for printer paper width
 
     Returns:
         tuple: (success: bool, message: str)
 
     Graphics mode features:
         - Material Design urgency icons (85x85px)
-        - Roboto fonts: 52pt for titles, 26pt for other text
+        - Roboto fonts: Adaptive sizes based on printer width
         - Professional bordered layout with normal font weight
         - Due date indicators with status
         - Hierarchical task paths
@@ -731,9 +634,14 @@ def print_task(task, use_graphics=True):
         - Full printer compatibility
     """
     try:
-        # Use bitmap graphics mode only
-        image = create_task_image(task)
-        print_data = convert_image_to_bitmap_escp(image)
+        # Debug logging to see what width parameter is being received
+        print(f"🖨️ DEBUG: print_task called with printer_width='{printer_width}'")
+        
+        # Use bitmap graphics mode only with adaptive width
+        image = create_task_image(task, printer_width)
+        print(f"🖨️ DEBUG: Created image with size {image.size[0]}x{image.size[1]}")
+        
+        print_data = convert_image_to_bitmap_escp(image, printer_width)
 
         # Send to printer
         printer_host = getattr(settings, 'PRINTER_HOST', '192.168.1.40')
@@ -744,7 +652,7 @@ def print_task(task, use_graphics=True):
             sock.connect((printer_host, printer_port))
             sock.sendall(print_data)
 
-        mode_text = "graphics (bitmap)" if use_graphics else "text"
+        mode_text = f"graphics (bitmap) {printer_width}" if use_graphics else f"text {printer_width}"
         return True, f"Task printed successfully ({mode_text} mode)"
 
     except socket.error as e:

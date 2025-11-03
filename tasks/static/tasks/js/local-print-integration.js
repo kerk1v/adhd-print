@@ -418,7 +418,8 @@ class LocalPrintManager {
                 
                 const escposData = await this.escposCommands.generateESCPOSCommands(taskData, {
                     mode: mode,
-                    allowFallback: printJob.options.allowFallback && attempt === 0
+                    allowFallback: printJob.options.allowFallback && attempt === 0,
+                    printerWidth: printJob.options.printerWidth
                 });
                 
                 return escposData;
