@@ -573,6 +573,22 @@ def task_print(request, task_id):
     """Print a task and all its child tasks to the configured ESC/P printer"""
     task = get_object_or_404(Task, id=task_id, owner=request.user)
     
+    # Get printer width from request data (default to 80mm for backward compatibility)
+    printer_width = '80mm'  # Default
+    if request.method == 'POST':
+        if request.content_type == 'application/json':
+            try:
+                import json
+                data = json.loads(request.body)
+                printer_width = data.get('printerWidth', '80mm')
+                print(f"🖨️ DEBUG: Extracted printer width from JSON: '{printer_width}'")
+            except (json.JSONDecodeError, AttributeError):
+                printer_width = '80mm'
+                print(f"🖨️ DEBUG: JSON parse failed, using default: '{printer_width}'")
+        else:
+            printer_width = request.POST.get('printerWidth', '80mm')
+            print(f"🖨️ DEBUG: Extracted printer width from POST: '{printer_width}'")
+    
     # Start timing the operation
     start_time = time.time()
     
@@ -602,11 +618,13 @@ def task_print(request, task_id):
             print_settings={
                 'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
                 'includes_subtasks': bool(child_tasks),
-                'subtask_count': len(child_tasks)
+                'subtask_count': len(child_tasks),
+                'printer_width': printer_width  # Record the printer width setting
             },
             printer_config={
                 'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
                 'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+                'printer_width': printer_width  # Also record in printer config
             }
         )
         
@@ -666,8 +684,8 @@ def task_print(request, task_id):
         # Use server-side printing (existing implementation)
         use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
 
-        # Print only the main task
-        success, message = print_task(task, use_graphics=use_graphics)
+        # Print only the main task with selected printer width
+        success, message = print_task(task, use_graphics=use_graphics, printer_width=printer_width)
         if not success:
             print_log.success = False
             print_log.error_message = f"Task print failed: {message}"
@@ -853,6 +871,10 @@ def print_todays_tasks(request):
             except json.JSONDecodeError:
                 pass
         
+        # Get printer width from request data (default to 80mm for backward compatibility)
+        printer_width = request_data.get('printerWidth', '80mm')
+        print(f"🖨️ DEBUG: Today's tasks printer width: '{printer_width}'")
+        
         # Check user's printing method preference
         user_profile = getattr(request.user, 'profile', None)
         if user_profile:
@@ -927,11 +949,13 @@ def print_todays_tasks(request):
                     'use_graphics': getattr(settings, 'PRINTER_USE_GRAPHICS', True),
                     'today_date': timezone.now().date().isoformat(),
                     'parent_tasks_count': parent_count,
-                    'leaf_tasks_count': len(leaf_tasks)
+                    'leaf_tasks_count': len(leaf_tasks),
+                    'printer_width': printer_width  # Record the printer width setting
                 },
                 printer_config={
                     'printer_ip': getattr(settings, 'PRINTER_IP', 'Not configured'),
                     'printer_port': getattr(settings, 'PRINTER_PORT', 'Not configured'),
+                    'printer_width': printer_width  # Also record in printer config
                 }
             )
         except (TypeError, ValueError, Exception):
@@ -1000,9 +1024,9 @@ def print_todays_tasks(request):
         printed_count = 0
         failed_prints = []
 
-        # Print only the leaf tasks
+        # Print only the leaf tasks with selected printer width
         for leaf_task in leaf_tasks:
-            success, message = print_task(leaf_task, use_graphics=use_graphics)
+            success, message = print_task(leaf_task, use_graphics=use_graphics, printer_width=printer_width)
             if success:
                 printed_count += 1
             else:
@@ -1118,6 +1142,10 @@ def generate_escpos_graphics(request):
         task_data = data['task']
         options = data.get('options', {})
         
+        # Get printer width from options (default to 80mm for backward compatibility)
+        printer_width = options.get('printerWidth', '80mm')
+        print(f"🖨️ DEBUG: generate_escpos_graphics printer width: '{printer_width}'")
+        
         # Validate required task fields
         required_fields = ['title']
         for field in required_fields:
@@ -1174,14 +1202,14 @@ def generate_escpos_graphics(request):
             # Generate graphics using existing print_utils.py
             format_type = options.get('format', 'bitmap')  # 'bitmap' or 'simple'
             
-            # Create image using existing function
-            image = create_task_image(mock_task)
+            # Create image using existing function with printer width
+            image = create_task_image(mock_task, printer_width)
             
-            # Convert to ESC/POS commands
+            # Convert to ESC/POS commands with printer width
             if format_type == 'bitmap':
-                escpos_data = convert_image_to_bitmap_escp(image)
+                escpos_data = convert_image_to_bitmap_escp(image, printer_width)
             else:  # simple/8-dot graphics
-                escpos_data = convert_image_to_escp(image)
+                escpos_data = convert_image_to_escp(image, printer_width)
             
             # Encode as base64 for JSON transport
             encoded_data = base64.b64encode(escpos_data).decode('utf-8')

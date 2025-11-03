@@ -258,13 +258,19 @@ async function handleTodaysServerPrint() {
     try {
         updateTodaysProgress(30, 'Sending to server...');
         
-        // Use existing server printing endpoint
+        // Get printer width from the modal
+        const width = document.getElementById('todays-print-width').value;
+        
+        // Use existing server printing endpoint with printer width data
         const response = await fetch(printTodaysTasksUrl, {
             method: 'POST',
             headers: {
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({
+                printerWidth: width
+            })
         });
         
         updateTodaysProgress(70, 'Processing on server...');
