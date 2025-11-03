@@ -164,7 +164,7 @@ class ImageCreationTests(PrintUtilsTestCase):
         # Verify image properties
         self.assertIsInstance(image, Image.Image)
         self.assertEqual(image.mode, '1')
-        self.assertEqual(image.width, 400)  # Expected width for 57mm
+        self.assertEqual(image.width, 375)  # Expected width for 57mm (reduced for physical margins)
         self.assertGreater(image.height, 100)
 
     def test_create_task_image_width_comparison(self):
@@ -175,7 +175,7 @@ class ImageCreationTests(PrintUtilsTestCase):
         # 57mm should be narrower
         self.assertLess(image_57mm.width, image_80mm.width)
         self.assertEqual(image_80mm.width, 576)
-        self.assertEqual(image_57mm.width, 400)
+        self.assertEqual(image_57mm.width, 375)  # Updated to match implementation
 
     def test_create_task_image_with_hierarchy(self):
         """Test image creation with hierarchical task."""

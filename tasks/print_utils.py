@@ -60,9 +60,6 @@ def create_task_image(task, printer_width='80mm'):
     Returns:
         PIL Image: 1-bit image optimized for thermal printing
     """
-    # Debug logging to see what width parameter is being received
-    print(f"🖨️ DEBUG: create_task_image called with printer_width='{printer_width}'")
-    
     # Calculate dimensions based on printer width at 203 DPI
     # 80mm = ~640px, 57mm = ~456px at 203 DPI, but use conservative values
     if printer_width == '57mm':
@@ -77,7 +74,6 @@ def create_task_image(task, printer_width='80mm'):
         icon_margin = 15  # Increased to prevent icon cutoff
         top_feed = 20  # Minimal top padding within image (actual feed in ESC/POS)
         bottom_padding = 5  # Minimal bottom padding for 57mm
-        print(f"🖨️ DEBUG: Using 57mm settings - width={width}, title_font={title_font_size}")
     else:  # 80mm (default)
         width = 576  # Conservative width that works for 80mm
         # Keep original font sizes
@@ -90,7 +86,6 @@ def create_task_image(task, printer_width='80mm'):
         icon_margin = 20
         top_feed = 30  # Keep original top padding for 80mm
         bottom_padding = 25  # Keep original bottom padding for 80mm
-        print(f"🖨️ DEBUG: Using 80mm settings - width={width}, title_font={title_font_size}")
     
     height = 800  # Initial height, will be adjusted as needed
 
@@ -634,12 +629,8 @@ def print_task(task, use_graphics=True, printer_width='80mm'):
         - Full printer compatibility
     """
     try:
-        # Debug logging to see what width parameter is being received
-        print(f"🖨️ DEBUG: print_task called with printer_width='{printer_width}'")
-        
         # Use bitmap graphics mode only with adaptive width
         image = create_task_image(task, printer_width)
-        print(f"🖨️ DEBUG: Created image with size {image.size[0]}x{image.size[1]}")
         
         print_data = convert_image_to_bitmap_escp(image, printer_width)
 

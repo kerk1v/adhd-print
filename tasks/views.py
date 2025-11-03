@@ -581,13 +581,10 @@ def task_print(request, task_id):
                 import json
                 data = json.loads(request.body)
                 printer_width = data.get('printerWidth', '80mm')
-                print(f"🖨️ DEBUG: Extracted printer width from JSON: '{printer_width}'")
             except (json.JSONDecodeError, AttributeError):
                 printer_width = '80mm'
-                print(f"🖨️ DEBUG: JSON parse failed, using default: '{printer_width}'")
         else:
             printer_width = request.POST.get('printerWidth', '80mm')
-            print(f"🖨️ DEBUG: Extracted printer width from POST: '{printer_width}'")
     
     # Start timing the operation
     start_time = time.time()
@@ -871,11 +868,8 @@ def print_todays_tasks(request):
             except json.JSONDecodeError:
                 pass
         
-        # Get printer width from request data (default to 80mm for backward compatibility)
-        printer_width = request_data.get('printerWidth', '80mm')
-        print(f"🖨️ DEBUG: Today's tasks printer width: '{printer_width}'")
-        
-        # Check user's printing method preference
+        # Get printer width from request_data (default to 80mm for backward compatibility)
+        printer_width = request_data.get('printerWidth', '80mm')        # Check user's printing method preference
         user_profile = getattr(request.user, 'profile', None)
         if user_profile:
             # Override with request data if provided
@@ -1144,7 +1138,6 @@ def generate_escpos_graphics(request):
         
         # Get printer width from options (default to 80mm for backward compatibility)
         printer_width = options.get('printerWidth', '80mm')
-        print(f"🖨️ DEBUG: generate_escpos_graphics printer width: '{printer_width}'")
         
         # Validate required task fields
         required_fields = ['title']
