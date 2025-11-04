@@ -158,18 +158,32 @@ LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/tasks/'
 LOGOUT_REDIRECT_URL = '/'
 
-# Email settings for user registration
-EMAIL_BACKEND = os.environ.get(
-    'EMAIL_BACKEND', 
-    'django.core.mail.backends.console.EmailBackend'  # Console backend for development
-)
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+# Email settings for user registration and notifications
+# Default to console backend in development, SMTP in production
+if DEBUG:
+    # Development: Use console backend unless explicitly overridden
+    EMAIL_BACKEND = os.environ.get(
+        'EMAIL_BACKEND', 
+        'django.core.mail.backends.console.EmailBackend'
+    )
+else:
+    # Production: Use SMTP backend by default
+    EMAIL_BACKEND = os.environ.get(
+        'EMAIL_BACKEND', 
+        'django.core.mail.backends.smtp.EmailBackend'
+    )
+
+# SMTP Configuration
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')  # Default to Gmail SMTP
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes', 'on')
 EMAIL_USE_SSL = os.environ.get('EMAIL_USE_SSL', 'False').lower() in ('true', '1', 'yes', 'on')
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'noreply@adhd-print.local')
+
+# Email timeout settings
+EMAIL_TIMEOUT = int(os.environ.get('EMAIL_TIMEOUT', '60'))  # 60 seconds default timeout
 
 # Account activation settings
 ACCOUNT_ACTIVATION_DAYS = int(os.environ.get('ACCOUNT_ACTIVATION_DAYS', '7'))  # Days before activation link expires
