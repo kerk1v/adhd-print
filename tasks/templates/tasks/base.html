@@ -28,7 +28,9 @@
                     <a class="nav-link" href="{% url 'user_profile' %}">
                         <i class="fas fa-user-cog me-1"></i>Profile
                     </a>
-                    <a class="nav-link" href="/admin/">Admin</a>
+                    {% if user.is_staff %}
+                        <a class="nav-link" href="/admin/">Admin</a>
+                    {% endif %}
                     <form method="post" action="{% url 'accounts:logout' %}" class="d-inline-flex align-items-center" style="margin: 0;">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-light btn-sm">Logout</button>
