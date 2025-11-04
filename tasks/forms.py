@@ -69,7 +69,6 @@ class TaskForm(forms.ModelForm):
             'description',
             'urgency',
             'due_date',
-            'done',
             'is_periodic',
             'start_date',
             'periodicity_type',
@@ -91,9 +90,6 @@ class TaskForm(forms.ModelForm):
             'due_date': forms.DateTimeInput(attrs={
                 'class': 'form-control',
                 'type': 'datetime-local'
-            }),
-            'done': forms.CheckboxInput(attrs={
-                'class': 'form-check-input'
             }),
             'is_periodic': forms.CheckboxInput(attrs={
                 'class': 'form-check-input',

@@ -19,14 +19,12 @@ class TaskAdmin(admin.ModelAdmin):
         'urgency',
         'owner',
         'due_date',
-        'done',
         'is_printed',
         'periodic_status',
         'created_at'
     ]
     list_filter = [
         'urgency',
-        'done',
         'is_printed',
         'is_periodic',
         'periodicity_type',
@@ -42,7 +40,7 @@ class TaskAdmin(admin.ModelAdmin):
             'fields': ('title', 'description', 'owner')
         }),
         ('Task Details', {
-            'fields': ('urgency', 'due_date', 'done', 'is_printed')
+            'fields': ('urgency', 'due_date', 'is_printed')
         }),
         ('Hierarchy', {
             'fields': ('parent',),
@@ -211,19 +209,7 @@ class TaskAdmin(admin.ModelAdmin):
             readonly_fields.append('owner')
         return readonly_fields
 
-    actions = ['mark_as_done', 'mark_as_not_done', 'generate_periodic_instances']
-
-    def mark_as_done(self, request, queryset):
-        """Mark selected tasks as done"""
-        updated = queryset.update(done=True)
-        messages.success(request, f'{updated} task(s) marked as done.')
-    mark_as_done.short_description = "Mark selected tasks as done"
-
-    def mark_as_not_done(self, request, queryset):
-        """Mark selected tasks as not done"""
-        updated = queryset.update(done=False)
-        messages.success(request, f'{updated} task(s) marked as not done.')
-    mark_as_not_done.short_description = "Mark selected tasks as not done"
+    actions = ['generate_periodic_instances']
 
     def generate_periodic_instances(self, request, queryset):
         """Generate instances for selected periodic tasks"""

@@ -60,18 +60,6 @@
                             </div>
                         </div>
                         
-                        <div class="mb-3">
-                            <div class="form-check">
-                                {{ form.done }}
-                                <label for="{{ form.done.id_for_label }}" class="form-check-label">
-                                    Mark as completed
-                                </label>
-                            </div>
-                            {% if form.done.errors %}
-                                <div class="text-danger">{{ form.done.errors }}</div>
-                            {% endif %}
-                        </div>
-                        
                         <!-- Periodic Task Section -->
                         {% if not parent_task %}
                         <div class="card mt-4">

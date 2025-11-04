@@ -32,7 +32,6 @@ class TaskModelTests(TestCase):
         self.assertEqual(task.title, 'Test Task')
         self.assertEqual(task.urgency, 'normal')
         self.assertEqual(task.owner, self.user)
-        self.assertFalse(task.done)
         self.assertFalse(task.is_periodic)
 
     def test_task_hierarchy(self):
@@ -174,11 +173,9 @@ class IntegrationTests(TestCase):
         response = self.client.get(reverse('task_list'))
         self.assertContains(response, 'Integration Test Task')
 
-        # Mark it as done
-        task.done = True
-        task.save()
-
-        self.assertTrue(task.done)
+        # Verify task attributes
+        self.assertEqual(task.title, 'Integration Test Task')
+        self.assertEqual(task.urgency, 'urgent')
 
     def test_periodic_task_workflow(self):
         """Test periodic task creation workflow."""
