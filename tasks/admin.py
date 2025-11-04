@@ -20,12 +20,14 @@ class TaskAdmin(admin.ModelAdmin):
         'owner',
         'due_date',
         'done',
+        'is_printed',
         'periodic_status',
         'created_at'
     ]
     list_filter = [
         'urgency',
         'done',
+        'is_printed',
         'is_periodic',
         'periodicity_type',
         'created_at',
@@ -40,7 +42,7 @@ class TaskAdmin(admin.ModelAdmin):
             'fields': ('title', 'description', 'owner')
         }),
         ('Task Details', {
-            'fields': ('urgency', 'due_date', 'done')
+            'fields': ('urgency', 'due_date', 'done', 'is_printed')
         }),
         ('Hierarchy', {
             'fields': ('parent',),

@@ -84,6 +84,22 @@
     font-size: 0.7em;
 }
 
+/* Task Checkbox Styles - Prevent compression when title wraps */
+.task-checkbox {
+    min-width: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+    margin-top: 2px; /* Slight top margin to align better with text */
+}
+
+/* Task title wrapper to handle multi-line titles properly */
+.task-title {
+    word-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
 /* List Group Item Overrides */
 .list-group-item {
     cursor: pointer;
@@ -152,6 +168,13 @@
     font-weight: 600;
 }
 
+/* Task list card body responsive heights */
+.task-list-card-body {
+    max-height: calc(100vh - 250px);
+    overflow-y: auto;
+    padding: 0;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
     .task-level-1 { 
@@ -165,6 +188,30 @@
     .btn-group-sm > .btn, .btn-sm {
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
+    }
+}
+
+/* Task List Container Height Adjustments */
+.task-list-container {
+    min-height: calc(100vh - 200px);
+}
+
+/* Responsive height adjustments for task containers */
+@media (max-height: 800px) {
+    .card-body[style*="max-height"] {
+        max-height: calc(100vh - 200px) !important;
+    }
+}
+
+@media (max-height: 600px) {
+    .card-body[style*="max-height"] {
+        max-height: calc(100vh - 180px) !important;
+    }
+}
+
+@media (max-height: 500px) {
+    .card-body[style*="max-height"] {
+        max-height: calc(100vh - 160px) !important;
     }
 }
 
@@ -212,6 +259,7 @@
 .text-truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

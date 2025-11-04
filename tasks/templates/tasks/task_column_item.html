@@ -1,17 +1,17 @@
 <div class="task-content-wrapper" id="task-{{ task.id }}">
     <div class="d-flex justify-content-between align-items-start">
         <div class="flex-grow-1 {% if task.done %}task-done{% endif %}">
-            <div class="d-flex align-items-center mb-1">
-                <input type="checkbox" class="form-check-input me-2 task-checkbox" 
-                       {% if task.done %}checked{% endif %}
-                       onclick="event.stopPropagation(); toggleTaskDone({{ task.id }})">
-                {% if task.is_periodic %}
-                    <i class="fas fa-redo-alt text-primary me-1" title="Recurring Task" style="font-size: 0.8em;"></i>
-                {% endif %}
-                <strong class="task-title" {% if task.is_selected %}style="background-color: #e3f2fd; padding: 2px 6px; border-radius: 4px; border: 1px solid #2196f3;"{% endif %}>{{ task.title }}</strong>
-                <span class="badge bg-{% if task.urgency == 'low' %}success{% elif task.urgency == 'normal' %}primary{% elif task.urgency == 'urgent' %}warning{% else %}danger{% endif %} ms-2 badge-sm">
-                    {{ task.get_urgency_display }}
-                </span>
+            <div class="d-flex align-items-start mb-1">
+                <div class="flex-shrink-0 me-2">
+                    <input type="checkbox" class="form-check-input task-checkbox" 
+                           {% if task.done %}checked{% endif %}
+                           onclick="event.stopPropagation(); toggleTaskDone({{ task.id }})">
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center flex-wrap">
+                        <strong class="task-title me-2" {% if task.is_selected %}style="background-color: #e3f2fd; padding: 2px 6px; border-radius: 4px; border: 1px solid #2196f3;"{% endif %}>{{ task.title }}</strong>
+                    </div>
+                </div>
             </div>
             
             {% if task.description %}
@@ -19,6 +19,15 @@
             {% endif %}
             
             <div class="text-muted small">
+                {% if task.is_periodic %}
+                    <i class="fas fa-redo-alt text-primary me-1" title="Recurring Task" style="font-size: 0.8em;"></i>
+                {% endif %}
+                {% if task.is_printed %}
+                    <i class="fas fa-print text-success me-1" title="Task has been printed" style="font-size: 0.8em;"></i>
+                {% endif %}
+                <span class="badge bg-{% if task.urgency == 'low' %}success{% elif task.urgency == 'normal' %}primary{% elif task.urgency == 'urgent' %}warning{% else %}danger{% endif %} badge-sm me-2">
+                    {{ task.get_urgency_display }}
+                </span>
                 <i class="fas fa-clock"></i> {{ task.created_at|date:"M d H:i" }}
                 {% if task.due_date %}
                     <span class="ms-2 {% if task.due_date < now and not task.done %}text-danger{% endif %}">
