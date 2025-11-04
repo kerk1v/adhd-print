@@ -84,6 +84,22 @@
     font-size: 0.7em;
 }
 
+/* Task Checkbox Styles - Prevent compression when title wraps */
+.task-checkbox {
+    min-width: 16px !important;
+    width: 16px !important;
+    height: 16px !important;
+    flex-shrink: 0 !important;
+    margin-top: 2px; /* Slight top margin to align better with text */
+}
+
+/* Task title wrapper to handle multi-line titles properly */
+.task-title {
+    word-wrap: break-word;
+    word-break: break-word;
+    line-height: 1.3;
+}
+
 /* List Group Item Overrides */
 .list-group-item {
     cursor: pointer;
@@ -212,6 +228,7 @@
 .text-truncate-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
