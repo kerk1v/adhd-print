@@ -607,11 +607,17 @@ class PrintIntegrationTests(TestCase):
         # Mock the get_all_subtasks method to return empty list (leaf task)
         mock_task.get_all_subtasks.return_value = []
         
-        # Mock the save method
-        mock_task.save = Mock()
+        # Mock the subtasks_for_template property (needed for our updated code)
+        mock_task.subtasks_for_template = []
+        
+        # Mock the task_identifier property
+        mock_task.task_identifier = 123
         
         # Mock the get_level method
         mock_task.get_level.return_value = 0
+        
+        # Mock the save method
+        mock_task.save = Mock()
 
         # Return a list directly instead of a mock queryset
         mock_get_todays.return_value = [mock_task]

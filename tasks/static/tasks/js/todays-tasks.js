@@ -233,13 +233,8 @@ async function handleTodaysLocalPrint() {
         updateTodaysProgress(100, 'Print completed!');
         
         if (result.success) {
-            // Mark tasks as printed after successful local printing
-            try {
-                await markTasksAsPrinted(tasksData);
-            } catch (markError) {
-                console.warn('Failed to mark tasks as printed:', markError);
-                // Don't fail the whole operation if marking fails
-            }
+            // Tasks are already marked as printed on the server side for local printing
+            // No need to call markTasksAsPrinted again
             
             showTodaysSuccess(result.message);
             setTimeout(() => {

@@ -1225,32 +1225,29 @@ def print_todays_tasks(request):
                 'message': 'No tasks due today',
                 'print_method': 'server'
             })
-
+        
         # Collect all leaf tasks (tasks with no children) from today's tasks
         leaf_tasks = []
         processed_ids = set()
 
         def collect_leaf_tasks(task):
             """Recursively collect tasks that have no children (leaf tasks)"""
-            # For virtual tasks, use title as identifier since they don't have IDs
-            task_identifier = task.id if task.pk else f"virtual_{task.title}_{task.due_date}"
-            
-            # Avoid processing the same task multiple times
-            if task_identifier in processed_ids:
+            task_id = getattr(task, 'task_identifier', getattr(task, 'id', None))
+            if task_id in processed_ids:
                 return
-            processed_ids.add(task_identifier)
-
-            # Get subtasks using our updated method that handles virtual instances
-            all_subtasks = task.get_all_subtasks()
+            processed_ids.add(task_id)
             
-            if not all_subtasks:
-                # This task has no children, it's a leaf
+            # Get subtasks for template use (handles virtual instances)
+            subtasks = getattr(task, 'subtasks_for_template', [])
+            
+            if not subtasks:
+                # This is a leaf task
                 leaf_tasks.append(task)
             else:
-                # This task has children, recurse into them
-                for subtask in all_subtasks:
+                # Process all subtasks recursively
+                for subtask in subtasks:
                     collect_leaf_tasks(subtask)
-
+        
         # Collect leaf tasks from all today's tasks
         for task in todays_tasks:
             collect_leaf_tasks(task)
@@ -1307,6 +1304,8 @@ def print_todays_tasks(request):
         if effective_method == 'local':
             # For local printing, return the task data to the client
             leaf_tasks_data = []
+            real_tasks_to_mark = []  # Track real tasks that need to be marked as printed
+            
             for leaf_task in leaf_tasks:
                 # Get hierarchy information for this task
                 hierarchy = []
@@ -1316,8 +1315,20 @@ def print_todays_tasks(request):
                     current = current.parent
                 hierarchy.reverse()  # Root to leaf order
                 
+                # For virtual periodic instances, we need to track the real template task
+                real_task_id = None
+                if hasattr(leaf_task, '_template_task') and leaf_task._template_task:
+                    # This is a virtual periodic instance, get the real template task ID
+                    real_task_id = leaf_task._template_task.id
+                    real_tasks_to_mark.append(leaf_task._template_task)
+                elif hasattr(leaf_task, 'pk') and leaf_task.pk:
+                    # This is a real task with a database ID
+                    real_task_id = leaf_task.pk
+                    real_tasks_to_mark.append(leaf_task)
+                
                 task_data = {
                     'id': getattr(leaf_task, 'task_identifier', leaf_task.id),
+                    'real_id': real_task_id,  # Include the real database ID for marking as printed
                     'title': leaf_task.title,
                     'description': leaf_task.description if leaf_task.description else '',
                     'urgency': leaf_task.urgency,
@@ -1327,6 +1338,14 @@ def print_todays_tasks(request):
                     'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
                 }
                 leaf_tasks_data.append(task_data)
+            
+            # Pre-mark the real tasks as printed since local printing will handle them
+            marked_count = 0
+            for real_task in real_tasks_to_mark:
+                if hasattr(real_task, 'pk') and real_task.pk:
+                    real_task.is_printed = True
+                    real_task.save()
+                    marked_count += 1
             
             if print_log:
                 print_log.success = True
@@ -1339,7 +1358,8 @@ def print_todays_tasks(request):
                 'message': f'Task data prepared for local printing ({len(leaf_tasks)} task(s))',
                 'print_method': 'local',
                 'task_data': leaf_tasks_data,
-                'use_client_side': True
+                'use_client_side': True,
+                'marked_as_printed': marked_count  # Let client know how many were marked
             })
 
         use_graphics = getattr(settings, 'PRINTER_USE_GRAPHICS', True)
@@ -1404,11 +1424,11 @@ def print_todays_tasks(request):
                     duration_ms=int((time.time() - start_time) * 1000)
                 )
             except:
-                pass  # Don't let logging errors break the response
+                pass  # If even emergency logging fails, just continue
         
         return JsonResponse({
             'success': False,
-            'message': f'Error printing today\'s tasks: {str(e)}',
+            'message': f'Print failed: {str(e)}',
             'print_method': 'server'
         })
 
