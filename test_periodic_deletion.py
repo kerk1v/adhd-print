@@ -2,8 +2,7 @@
 """
 Test script for Periodic Task Deletion Features
 
-This script demonstrates the new functionality for deleting subtasks
-from periodic task instances with options to update the template.
+This script demonstrates periodic task functionality with the new dynamic approach.
 """
 
 import os
@@ -18,12 +17,12 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 from tasks.models import Task
-from tasks.periodic_utils import generate_periodic_task_instances
+from tasks.periodic_utils import get_todays_periodic_tasks
 
 def test_periodic_deletion_features():
-    """Test the new periodic instance deletion features"""
+    """Test the periodic task features with dynamic approach"""
     
-    print("🧪 Testing Periodic Task Deletion Features")
+    print("🧪 Testing Periodic Task Features (Dynamic Approach)")
     print("=" * 50)
     
     # Get or create test user

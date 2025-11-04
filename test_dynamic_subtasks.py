@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
-Test script to verify that subtasks are automatically created for existing periodic instances
-when new subtasks are added to periodic templates.
+Test script to verify that periodic tasks work correctly with the dynamic approach.
+Since we now generate virtual instances dynamically, this tests the virtual generation.
 """
 
-from tasks.periodic_utils import generate_periodic_task_instances
+from tasks.periodic_utils import get_todays_periodic_tasks
 from django.utils import timezone
 from django.contrib.auth.models import User
 from tasks.models import Task

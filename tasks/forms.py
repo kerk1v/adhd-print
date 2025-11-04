@@ -24,6 +24,43 @@ class TaskForm(forms.ModelForm):
         required=False,
         help_text="Select days of the week for weekly recurring tasks"
     )
+    
+    # Custom fields for interval-based periodicities
+    interval_days = forms.IntegerField(
+        min_value=1,
+        max_value=365,
+        required=False,
+        help_text="Number of days between repetitions (1-365)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control interval-field', 
+            'data-type': 'every_x_days',
+            'placeholder': 'Enter days...'
+        })
+    )
+    
+    interval_weeks = forms.IntegerField(
+        min_value=1,
+        max_value=52,
+        required=False,
+        help_text="Number of weeks between repetitions (1-52)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control interval-field', 
+            'data-type': 'every_x_weeks',
+            'placeholder': 'Enter weeks...'
+        })
+    )
+    
+    interval_months = forms.IntegerField(
+        min_value=1,
+        max_value=24,
+        required=False,
+        help_text="Number of months between repetitions (1-24)",
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control interval-field', 
+            'data-type': 'every_x_months',
+            'placeholder': 'Enter months...'
+        })
+    )
 
     class Meta:
         model = Task
@@ -88,11 +125,22 @@ class TaskForm(forms.ModelForm):
         if not self.instance.pk and not self.initial.get('start_date'):
             self.fields['start_date'].initial = timezone.now().date()
 
-        # Initialize weekdays field if editing an existing periodic task
+        # Initialize fields if editing an existing periodic task
         if (self.instance.pk and self.instance.is_periodic
                 and self.instance.periodicity_detail):
+            
+            interval = self.instance.periodicity_detail.get('interval', 1)
             weekdays = self.instance.periodicity_detail.get('weekdays', [])
-            self.fields['weekdays'].initial = weekdays
+            
+            # Populate interval fields based on periodicity type
+            if self.instance.periodicity_type == 'every_x_days':
+                self.fields['interval_days'].initial = interval
+            elif self.instance.periodicity_type == 'every_x_weeks':
+                self.fields['interval_weeks'].initial = interval
+            elif self.instance.periodicity_type == 'every_x_months':
+                self.fields['interval_months'].initial = interval
+            elif self.instance.periodicity_type == 'weekly':
+                self.fields['weekdays'].initial = weekdays
 
     def clean(self):
         cleaned_data = super().clean()
@@ -111,18 +159,174 @@ class TaskForm(forms.ModelForm):
             if end_date and end_date < start_date:
                 raise ValidationError("End date must be after start date.")
 
-        # For weekly tasks, save weekdays to periodicity_detail
-        if is_periodic and periodicity_type == 'weekly':
-            if weekdays:
-                cleaned_data['periodicity_detail'] = {
-                    'weekdays': [int(day) for day in weekdays]}
-            else:
-                # Default to the same weekday as start_date
-                if start_date:
+            # Handle interval-based periodicities
+            if periodicity_type == 'every_x_days':
+                interval = cleaned_data.get('interval_days')
+                if not interval:
+                    raise ValidationError({
+                        'interval_days': 'This field is required for "Every X Days" periodicity.'
+                    })
+                cleaned_data['periodicity_detail'] = {'interval': interval}
+                
+            elif periodicity_type == 'every_x_weeks':
+                interval = cleaned_data.get('interval_weeks')
+                if not interval:
+                    raise ValidationError({
+                        'interval_weeks': 'This field is required for "Every X Weeks" periodicity.'
+                    })
+                cleaned_data['periodicity_detail'] = {'interval': interval}
+                
+            elif periodicity_type == 'every_x_months':
+                interval = cleaned_data.get('interval_months')
+                if not interval:
+                    raise ValidationError({
+                        'interval_months': 'This field is required for "Every X Months" periodicity.'
+                    })
+                cleaned_data['periodicity_detail'] = {'interval': interval}
+                
+            elif periodicity_type == 'weekly':
+                # For weekly tasks, save weekdays to periodicity_detail
+                if weekdays:
                     cleaned_data['periodicity_detail'] = {
-                        'weekdays': [start_date.weekday()]}
+                        'weekdays': [int(day) for day in weekdays]}
+                else:
+                    # Default to the same weekday as start_date
+                    if start_date:
+                        cleaned_data['periodicity_detail'] = {
+                            'weekdays': [start_date.weekday()]}
 
         return cleaned_data
+
+
+class TaskAdminForm(forms.ModelForm):
+    """Custom form for Task admin with dynamic periodicity fields"""
+    
+    # Custom fields for interval-based periodicities
+    interval_days = forms.IntegerField(
+        min_value=1,
+        max_value=365,
+        required=False,
+        help_text="Number of days between repetitions (1-365)",
+        widget=forms.NumberInput(attrs={'class': 'interval-field', 'data-type': 'every_x_days'})
+    )
+    
+    interval_weeks = forms.IntegerField(
+        min_value=1,
+        max_value=52,
+        required=False,
+        help_text="Number of weeks between repetitions (1-52)",
+        widget=forms.NumberInput(attrs={'class': 'interval-field', 'data-type': 'every_x_weeks'})
+    )
+    
+    interval_months = forms.IntegerField(
+        min_value=1,
+        max_value=24,
+        required=False,
+        help_text="Number of months between repetitions (1-24). Note: If you enter 12, consider using Yearly instead.",
+        widget=forms.NumberInput(attrs={'class': 'interval-field', 'data-type': 'every_x_months'})
+    )
+
+    # Weekday selection for weekly tasks (keeping existing functionality)
+    WEEKDAY_CHOICES = [
+        (0, 'Monday'),
+        (1, 'Tuesday'),
+        (2, 'Wednesday'),
+        (3, 'Thursday'),
+        (4, 'Friday'),
+        (5, 'Saturday'),
+        (6, 'Sunday'),
+    ]
+
+    weekdays = forms.MultipleChoiceField(
+        choices=WEEKDAY_CHOICES,
+        widget=forms.CheckboxSelectMultiple,
+        required=False,
+        help_text="Select days of the week for weekly recurring tasks"
+    )
+
+    class Meta:
+        model = Task
+        fields = '__all__'
+        widgets = {
+            'periodicity_detail': forms.HiddenInput(),  # Hide the JSON field, we'll populate it automatically
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # If editing an existing task, populate interval fields from periodicity_detail
+        if self.instance.pk and self.instance.periodicity_detail:
+            interval = self.instance.periodicity_detail.get('interval', 1)
+            weekdays = self.instance.periodicity_detail.get('weekdays', [])
+            
+            if self.instance.periodicity_type == 'every_x_days':
+                self.fields['interval_days'].initial = interval
+            elif self.instance.periodicity_type == 'every_x_weeks':
+                self.fields['interval_weeks'].initial = interval
+            elif self.instance.periodicity_type == 'every_x_months':
+                self.fields['interval_months'].initial = interval
+            elif self.instance.periodicity_type == 'weekly':
+                self.fields['weekdays'].initial = weekdays
+
+    def clean(self):
+        cleaned_data = super().clean()
+        is_periodic = cleaned_data.get('is_periodic')
+        periodicity_type = cleaned_data.get('periodicity_type')
+        
+        if is_periodic and periodicity_type:
+            # Validate and set periodicity_detail based on periodicity_type
+            if periodicity_type == 'every_x_days':
+                interval = cleaned_data.get('interval_days')
+                if not interval:
+                    raise ValidationError({
+                        'interval_days': 'This field is required for "Every X Days" periodicity.'
+                    })
+                cleaned_data['periodicity_detail'] = {'interval': interval}
+                
+            elif periodicity_type == 'every_x_weeks':
+                interval = cleaned_data.get('interval_weeks')
+                if not interval:
+                    raise ValidationError({
+                        'interval_weeks': 'This field is required for "Every X Weeks" periodicity.'
+                    })
+                cleaned_data['periodicity_detail'] = {'interval': interval}
+                
+            elif periodicity_type == 'every_x_months':
+                interval = cleaned_data.get('interval_months')
+                if not interval:
+                    raise ValidationError({
+                        'interval_months': 'This field is required for "Every X Months" periodicity.'
+                    })
+                
+                # Suggest yearly if interval is 12
+                if interval == 12:
+                    self.add_error('interval_months', 
+                        'Consider using "Yearly" periodicity instead of "Every 12 Months" for better clarity.')
+                
+                cleaned_data['periodicity_detail'] = {'interval': interval}
+                
+            elif periodicity_type == 'weekly':
+                # Handle existing weekly logic
+                weekdays = cleaned_data.get('weekdays')
+                if weekdays:
+                    cleaned_data['periodicity_detail'] = {
+                        'weekdays': [int(day) for day in weekdays]
+                    }
+                else:
+                    # Default to same weekday as start_date if no specific weekdays set
+                    start_date = cleaned_data.get('start_date')
+                    if start_date:
+                        cleaned_data['periodicity_detail'] = {
+                            'weekdays': [start_date.weekday()]
+                        }
+        
+        return cleaned_data
+
+    class Media:
+        css = {
+            'all': ('admin/css/periodic-task-admin.css',)
+        }
+        js = ('admin/js/periodic-task-admin.js',)
 
 
 class UserProfileForm(forms.ModelForm):

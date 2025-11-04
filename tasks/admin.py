@@ -6,10 +6,13 @@ from django.urls import reverse
 from django.utils.safestring import mark_safe
 from django.db import models
 from .models import Task, MaintenanceLog, UserProfile, PrintLog
+from .forms import TaskAdminForm
 
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
+    form = TaskAdminForm  # Use our custom form
+    
     list_display = [
         'hierarchical_title',
         'task_type',
@@ -27,10 +30,9 @@ class TaskAdmin(admin.ModelAdmin):
         'periodicity_type',
         'created_at',
         'owner',
-        ('periodic_parent', admin.EmptyFieldListFilter),
     ]
     search_fields = ['title', 'description']
-    readonly_fields = ['created_at', 'periodic_instances_count']
+    readonly_fields = ['created_at']
     ordering = ['parent__id', '-created_at']
 
     fieldsets = (
@@ -51,15 +53,15 @@ class TaskAdmin(admin.ModelAdmin):
                 'is_periodic',
                 'start_date',
                 'periodicity_type',
-                'periodicity_detail',
-                'end_date',
-                'periodic_parent',
-                'periodic_instances_count'
+                ('interval_days', 'interval_weeks', 'interval_months'),
+                'weekdays',
+                'end_date'
             ),
             'classes': ('collapse',),
             'description': (
-                'Configure recurring task behavior. Templates have '
-                'is_periodic=True, instances have periodic_parent set.'
+                'Configure recurring task behavior. For interval-based periodicities, '
+                'fill in the appropriate interval field based on your selected type. '
+                'With dynamic approach, periodic tasks generate virtual instances when needed.'
             )
         }),
         ('Metadata', {
@@ -76,9 +78,7 @@ class TaskAdmin(admin.ModelAdmin):
 
         # Add visual indicators for periodic tasks
         if obj.is_periodic:
-            icon = "🔄"  # Recurring template
-        elif obj.periodic_parent:
-            icon = "📅"  # Periodic instance
+            icon = "🔄"  # Recurring periodic task
         else:
             icon = "📋"  # Regular task
 
@@ -90,16 +90,7 @@ class TaskAdmin(admin.ModelAdmin):
         """Show what type of task this is"""
         if obj.is_periodic:
             return format_html(
-                '<span style="color: blue; font-weight: bold;">Template</span>')
-        elif obj.periodic_parent:
-            parent_link = reverse(
-                'admin:tasks_task_change', args=[
-                    obj.periodic_parent.id])
-            return format_html(
-                '<span style="color: green;">Instance</span><br><a href="{}" style="font-size: 0.8em;">→ {}</a>',
-                parent_link,
-                obj.periodic_parent.title[:20] + ('...' if len(obj.periodic_parent.title) > 20 else '')
-            )
+                '<span style="color: blue; font-weight: bold;">Periodic</span>')
         else:
             return format_html('<span style="color: gray;">Regular</span>')
     task_type.short_description = 'Type'
@@ -108,119 +99,60 @@ class TaskAdmin(admin.ModelAdmin):
         """Show periodic task status and details"""
         if obj.is_periodic:
             if obj.periodicity_type:
-                status = f"{obj.periodicity_type.title()}"
+                status = f"{obj.periodicity_type.replace('_', ' ').title()}"
+                
                 if obj.periodicity_detail:
                     if obj.periodicity_type == 'weekly' and 'weekdays' in obj.periodicity_detail:
                         weekdays = obj.periodicity_detail['weekdays']
                         days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
                         selected_days = [days[i] for i in weekdays]
                         status += f" ({', '.join(selected_days)})"
+                    elif obj.periodicity_type in ['every_x_days', 'every_x_weeks', 'every_x_months'] and 'interval' in obj.periodicity_detail:
+                        interval = obj.periodicity_detail['interval']
+                        if obj.periodicity_type == 'every_x_days':
+                            status = f"Every {interval} day{'s' if interval > 1 else ''}"
+                        elif obj.periodicity_type == 'every_x_weeks':
+                            status = f"Every {interval} week{'s' if interval > 1 else ''}"
+                        elif obj.periodicity_type == 'every_x_months':
+                            status = f"Every {interval} month{'s' if interval > 1 else ''}"
+                
                 return format_html('<span style="color: blue;">{}</span>', status)
             return format_html(
-                '<span style="color: orange;">Template (incomplete)</span>')
-        elif obj.periodic_parent:
-            return format_html('<span style="color: green;">Instance</span>')
+                '<span style="color: orange;">Periodic (incomplete)</span>')
         return '-'
     periodic_status.short_description = 'Periodic Status'
-
-    def periodic_instances_count(self, obj):
-        """Show count of periodic instances"""
-        if obj.is_periodic:
-            from django.utils import timezone
-            total = obj.periodic_instances.count()
-            completed = obj.periodic_instances.filter(done=True).count()
-            pending = total - completed
-
-            # Count future instances that would be deleted
-            current_date = timezone.now().date()
-            future_instances = obj.periodic_instances.filter(
-                due_date__date__gte=current_date
-            ).count()
-
-            return format_html(
-                'Total: {} | Completed: {} | Pending: {}<br>'
-                '<span style="color: red; font-size: 0.9em;">⚠️ {} future instances will be deleted if template is removed</span>',
-                total,
-                completed,
-                pending,
-                future_instances)
-        return '-'
-    periodic_instances_count.short_description = 'Instance Statistics'
 
     def get_queryset(self, request):
         """Order tasks to show hierarchy clearly and optimize queries"""
         qs = super().get_queryset(request)
-        return qs.select_related(
-            'parent',
-            'owner',
-            'periodic_parent').prefetch_related('periodic_instances')
+        return qs.select_related('parent', 'owner')
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         """Customize foreign key fields"""
         if db_field.name == "parent":
-            # Only show tasks that can have subtasks (level < 2) and are not periodic
-            # instances
+            # Only show tasks that can have subtasks (level < 2) and are not periodic instances
             kwargs["queryset"] = Task.objects.filter(
                 models.Q(
                     parent__isnull=True) | models.Q(
-                    parent__parent__isnull=True)).filter(
-                periodic_parent__isnull=True)  # Exclude periodic instances from being parents
-        elif db_field.name == "periodic_parent":
-            # Only show periodic templates
-            kwargs["queryset"] = Task.objects.filter(is_periodic=True)
+                    parent__parent__isnull=True))
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def get_form(self, request, obj=None, **kwargs):
         """Customize form behavior"""
         form = super().get_form(request, obj, **kwargs)
-
-        # Add help text for JSON field
-        if 'periodicity_detail' in form.base_fields:
-            form.base_fields['periodicity_detail'].help_text = mark_safe(
-                'JSON format examples:<br>'
-                '• Weekly: <code>{"weekdays": [0, 1, 2, 3, 4]}</code> (Mon-Fri)<br>'
-                '• Monthly: <code>{"day_of_month": 15}</code> (15th of each month)<br>'
-                'Weekdays: 0=Monday, 1=Tuesday, ..., 6=Sunday'
-            )
-
         return form
 
     def delete_model(self, request, obj):
         """Override delete to handle validation and provide feedback"""
         try:
-            # Count what will be deleted for periodic tasks
-            if obj.is_periodic:
-                from django.utils import timezone
-                current_date = timezone.now().date()
-                future_instances = obj.periodic_instances.filter(
-                    due_date__date__gte=current_date
-                )
-
-                # Count total subtasks that will be deleted
-                total_subtasks = 0
-                for instance in future_instances:
-                    total_subtasks += self._count_subtasks_recursive(instance)
-
-                obj.delete()
-                messages.success(
-                    request, f'Periodic task template "{
-                        obj.title}" was deleted successfully. ' f'CASCADE DELETION: This also removed {
-                        future_instances.count()} future instances ' f'and {total_subtasks} associated subtasks.')
-            elif not obj.is_periodic and obj.has_incomplete_subtasks():
-                # This should trigger the ValidationError in the model
-                obj.delete()
-            else:
-                obj.delete()
-                if obj.periodic_parent:
-                    messages.success(
-                        request, f'Periodic instance "{
-                            obj.title}" was deleted successfully.')
-                else:
-                    messages.success(
-                        request, f'Task "{
-                            obj.title}" was deleted successfully.')
-        except ValidationError as e:
-            messages.error(request, str(e))
+            obj.delete()
+            messages.success(
+                request,
+                f'Task "{obj.title}" was deleted successfully.'
+            )
+        except Exception as e:
+            messages.error(request, f'Error deleting task: {str(e)}')
+            raise
 
     def _count_subtasks_recursive(self, task):
         """Count all subtasks recursively"""
@@ -234,35 +166,16 @@ class TaskAdmin(admin.ModelAdmin):
         """Override bulk delete to handle validation and provide feedback"""
         deleted_count = 0
         errors = []
-        total_instances_deleted = 0
-        total_subtasks_deleted = 0
 
         for obj in queryset:
             try:
-                # Count what will be deleted for periodic tasks
-                if obj.is_periodic:
-                    from django.utils import timezone
-                    current_date = timezone.now().date()
-                    future_instances = obj.periodic_instances.filter(
-                        due_date__date__gte=current_date
-                    )
-
-                    # Count total subtasks that will be deleted
-                    for instance in future_instances:
-                        total_subtasks_deleted += self._count_subtasks_recursive(
-                            instance)
-
-                    total_instances_deleted += future_instances.count()
-
                 obj.delete()
                 deleted_count += 1
-            except ValidationError as e:
+            except Exception as e:
                 errors.append(f'"{obj.title}": {str(e)}')
 
         if deleted_count > 0:
             success_msg = f'{deleted_count} task(s) deleted successfully.'
-            if total_instances_deleted > 0:
-                success_msg += f' This also removed {total_instances_deleted} future periodic instances and {total_subtasks_deleted} associated subtasks.'
             messages.success(request, success_msg)
 
         if errors:
@@ -270,21 +183,12 @@ class TaskAdmin(admin.ModelAdmin):
                 messages.error(request, error)
 
     def save_model(self, request, obj, form, change):
-        """Override save to handle validation and periodic task generation"""
+        """Override save to handle validation"""
         try:
             if not change:  # If creating new task
                 if not obj.owner:
                     obj.owner = request.user
             obj.save()
-
-            # Generate periodic instances if this is a new periodic task
-            if obj.is_periodic and not change:
-                from .periodic_utils import generate_periodic_task_instances
-                instances = generate_periodic_task_instances(obj)
-                if instances:
-                    messages.info(
-                        request, f'Generated {
-                            len(instances)} periodic task instances.')
 
             if change:
                 messages.success(
@@ -303,9 +207,6 @@ class TaskAdmin(admin.ModelAdmin):
         readonly_fields = list(self.readonly_fields)
         if obj:  # Editing existing task
             readonly_fields.append('owner')
-            # Make periodic_parent readonly for existing tasks to prevent confusion
-            if obj.periodic_parent:
-                readonly_fields.extend(['is_periodic', 'periodic_parent'])
         return readonly_fields
 
     actions = ['mark_as_done', 'mark_as_not_done', 'generate_periodic_instances']
@@ -324,24 +225,74 @@ class TaskAdmin(admin.ModelAdmin):
 
     def generate_periodic_instances(self, request, queryset):
         """Generate instances for selected periodic tasks"""
-        from .periodic_utils import generate_periodic_task_instances
-
         periodic_tasks = queryset.filter(is_periodic=True)
         total_instances = 0
 
         for task in periodic_tasks:
-            instances = generate_periodic_task_instances(task)
-            total_instances += len(instances)
+            from django.utils import timezone
+            from datetime import timedelta
+            
+            instances_created = 0
+            end_date = timezone.now().date() + timedelta(days=365)  # Generate for next year
+            
+            # Using the dynamic generation logic for actual instance creation
+            start_date = task.created_at.date() if task.created_at else timezone.now().date()
+            current_date = start_date
+            
+            # Create instances up to end_date if they don't exist
+            while current_date <= end_date:
+                if task._should_occur_on_date(current_date):
+                    # Check if we already have a task for this date
+                    existing = Task.objects.filter(
+                        title=task.title,
+                        due_date__date=current_date,
+                        parent=None,
+                        is_periodic=False
+                    ).first()
+                    
+                    if not existing:
+                        # Create the instance
+                        Task.objects.create(
+                            title=task.title,
+                            description=task.description,
+                            due_date=timezone.datetime.combine(current_date, task.due_date.time()) if task.due_date else None,
+                            priority=task.priority,
+                            owner=task.owner,
+                            parent=None,
+                            is_periodic=False,
+                            category=task.category,
+                            estimated_duration=task.estimated_duration,
+                            energy_level_required=task.energy_level_required,
+                            context=task.context
+                        )
+                        instances_created += 1
+                
+                # Advance to next potential date
+                if task.periodicity == 'D':
+                    current_date += timedelta(days=1)
+                elif task.periodicity == 'W':
+                    current_date += timedelta(weeks=1)
+                elif task.periodicity == 'M':
+                    if current_date.month == 12:
+                        current_date = current_date.replace(year=current_date.year + 1, month=1)
+                    else:
+                        current_date = current_date.replace(month=current_date.month + 1)
+                elif task.periodicity == 'Y':
+                    current_date = current_date.replace(year=current_date.year + 1)
+                else:
+                    break
+            
+            total_instances += instances_created
 
         if total_instances > 0:
             messages.success(
                 request, f'Generated {total_instances} periodic task instances from {
-                    periodic_tasks.count()} template(s).')
+                    periodic_tasks.count()} periodic task(s).')
         else:
             messages.info(
                 request,
                 'No new instances were generated (they may already exist).')
-    generate_periodic_instances.short_description = "Generate periodic instances for selected templates"
+    generate_periodic_instances.short_description = "Generate periodic instances for selected periodic tasks"
 
 
 @admin.register(MaintenanceLog)

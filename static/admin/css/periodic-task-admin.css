@@ -1,0 +1,52 @@
+/* Periodic Task Admin CSS */
+
+.interval-field {
+    width: 100px;
+    display: inline-block;
+}
+
+.field-interval_days,
+.field-interval_weeks,
+.field-interval_months {
+    display: none; /* Initially hidden, shown by JS */
+}
+
+.field-weekdays {
+    display: none; /* Initially hidden, shown by JS */
+}
+
+.field-weekdays ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.field-weekdays li {
+    display: inline-block;
+    margin-right: 15px;
+    margin-bottom: 5px;
+}
+
+.field-weekdays input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+/* Style the interval fields section */
+.periodic-intervals {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.periodic-intervals .form-row {
+    min-width: 200px;
+}
+
+/* Style for the warning message */
+#months-warning {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    padding: 8px;
+    border-radius: 4px;
+    margin-top: 5px;
+}

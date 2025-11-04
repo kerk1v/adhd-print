@@ -7,9 +7,9 @@
 <div class="container-fluid">
     <div class="row mb-3">
         <div class="col">
-            <h1 class="h2">
+                <h1 class="h2">
                 <i class="fas fa-calendar-day me-2"></i>
-                Today's Recurring Tasks
+                Today's Tasks
                 <small class="text-muted">({{ today|date:"F j, Y" }})</small>
             </h1>
         </div>
@@ -29,13 +29,13 @@
                         <div class="col-3">
                             <div class="border-end">
                                 <h3 class="text-primary mb-0">{{ total_parent_tasks }}</h3>
-                                <small class="text-muted">Recurring Task{{ total_parent_tasks|pluralize }}</small>
+                                <small class="text-muted">Task Group{{ total_parent_tasks|pluralize }}</small>
                             </div>
                         </div>
                         <div class="col-3">
                             <div class="border-end">
                                 <h3 class="text-success mb-0">{{ total_instances }}</h3>
-                                <small class="text-muted">Today's Instance{{ total_instances|pluralize }}</small>
+                                <small class="text-muted">Task{{ total_instances|pluralize }} Today</small>
                             </div>
                         </div>
                         <div class="col-3">
@@ -69,17 +69,23 @@
             <div class="card mb-3">
                 <div class="card-header">
                     <h5 class="mb-0">
-                        <i class="fas fa-repeat me-2"></i>
-                        {{ parent.title }}
-                        <span class="badge bg-secondary ms-2">{{ parent.get_periodicity_type_display }}</span>
-                        {% if parent.periodicity_detail %}
-                            {% if parent.periodicity_type == 'weekly' and parent.periodicity_detail.weekdays %}
-                                <small class="text-muted ms-2">
-                                    ({% for day in parent.periodicity_detail.weekdays %}
-                                        {% if day == 0 %}Mon{% elif day == 1 %}Tue{% elif day == 2 %}Wed{% elif day == 3 %}Thu{% elif day == 4 %}Fri{% elif day == 5 %}Sat{% elif day == 6 %}Sun{% endif %}{% if not forloop.last %}, {% endif %}
-                                    {% endfor %})
-                                </small>
+                        {% if parent.is_periodic %}
+                            <i class="fas fa-repeat me-2"></i>
+                            {{ parent.title }}
+                            <span class="badge bg-secondary ms-2">{{ parent.get_periodicity_type_display }}</span>
+                            {% if parent.periodicity_detail %}
+                                {% if parent.periodicity_type == 'weekly' and parent.periodicity_detail.weekdays %}
+                                    <small class="text-muted ms-2">
+                                        ({% for day in parent.periodicity_detail.weekdays %}
+                                            {% if day == 0 %}Mon{% elif day == 1 %}Tue{% elif day == 2 %}Wed{% elif day == 3 %}Thu{% elif day == 4 %}Fri{% elif day == 5 %}Sat{% elif day == 6 %}Sun{% endif %}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %})
+                                    </small>
+                                {% endif %}
                             {% endif %}
+                        {% else %}
+                            <i class="fas fa-tasks me-2"></i>
+                            {{ parent.title }}
+                            <span class="badge bg-info ms-2">Regular Task</span>
                         {% endif %}
                     </h5>
                     {% if parent.description %}
@@ -89,7 +95,7 @@
                 <div class="card-body">
                     {% for instance in group.instances %}
                     <div class="task-hierarchy mb-3">
-                        <!-- Today's Instance -->
+                        <!-- Today's Task -->
                         <div class="d-flex align-items-center mb-2">
                             <div class="me-3">
                                 {% if instance.urgency == 'critical' %}
@@ -103,18 +109,18 @@
                                 {% endif %}
                             </div>
                             <div class="flex-grow-1">
+                                {% if parent.is_periodic %}
+                                    <i class="fas fa-redo-alt text-primary me-2" title="Generated from Recurring Task" style="font-size: 0.9em;"></i>
+                                {% endif %}
                                 <strong>{{ instance.title }}</strong>
                                 {% if instance.due_date %}
                                     <small class="text-muted ms-2">Due: {{ instance.due_date|date:"M j" }}</small>
                                 {% endif %}
                             </div>
-                            <div class="ms-auto">
-                                <span class="badge bg-success">Today's Instance</span>
-                            </div>
                         </div>
                         
                         <!-- Subtasks -->
-                        {% for subtask in instance.subtasks.all %}
+                        {% for subtask in instance.subtasks_for_template %}
                         <div class="d-flex align-items-center mb-1 ms-4">
                             <div class="me-3">
                                 {% if subtask.urgency == 'critical' %}
@@ -140,7 +146,7 @@
                         </div>
                         
                         <!-- Sub-subtasks -->
-                        {% for subsubtask in subtask.subtasks.all %}
+                        {% for subsubtask in subtask.subtasks_for_template %}
                         <div class="d-flex align-items-center mb-1 ms-5">
                             <div class="me-3">
                                 {% if subsubtask.urgency == 'critical' %}
@@ -182,8 +188,8 @@
             <div class="card">
                 <div class="card-body py-5">
                     <i class="fas fa-calendar-check fa-4x text-muted mb-3"></i>
-                    <h3 class="text-muted">No Recurring Tasks Today</h3>
-                    <p class="text-muted">You don't have any recurring tasks scheduled for {{ today|date:"F j, Y" }}.</p>
+                    <h3 class="text-muted">No Tasks Today</h3>
+                    <p class="text-muted">You don't have any tasks scheduled for {{ today|date:"F j, Y" }}.</p>
                     <a href="{% url 'task_list' %}" class="btn btn-outline-primary">
                         <i class="fas fa-arrow-left me-2"></i>
                         Back to Task List
