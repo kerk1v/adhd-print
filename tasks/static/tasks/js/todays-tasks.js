@@ -233,6 +233,14 @@ async function handleTodaysLocalPrint() {
         updateTodaysProgress(100, 'Print completed!');
         
         if (result.success) {
+            // Mark tasks as printed after successful local printing
+            try {
+                await markTasksAsPrinted(tasksData);
+            } catch (markError) {
+                console.warn('Failed to mark tasks as printed:', markError);
+                // Don't fail the whole operation if marking fails
+            }
+            
             showTodaysSuccess(result.message);
             setTimeout(() => {
                 todaysPrintModal.hide();
@@ -329,6 +337,41 @@ async function fetchTodaysTasksDataForLocalPrint() {
     }
     
     return data.task_data;
+}
+
+async function markTasksAsPrinted(tasksData) {
+    // Extract task IDs from the tasks data
+    const taskIds = tasksData
+        .map(task => task.id)
+        .filter(id => typeof id === 'number'); // Only include real task IDs, not virtual ones
+    
+    if (taskIds.length === 0) {
+        console.log('No real task IDs to mark as printed (virtual tasks only)');
+        return;
+    }
+    
+    const response = await fetch('/tasks/mark-printed/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            task_ids: taskIds
+        })
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Failed to mark tasks as printed: HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (!data.success) {
+        throw new Error(data.message || 'Failed to mark tasks as printed');
+    }
+    
+    console.log(`✅ Marked ${data.updated_count} task(s) as printed`);
 }
 
 async function fetchTodaysTasksData() {

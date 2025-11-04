@@ -115,7 +115,19 @@ class PrintModalManager {
                 const localRadio = document.getElementById('local_print');
                 const serverRadio = document.getElementById('server_print');
                 
-                if (printMethod === 'local') {
+                // Hide server option if not enabled for user
+                const serverOption = serverRadio?.closest('.form-check');
+                if (!profile.server_printing_enabled) {
+                    if (serverOption) {
+                        serverOption.style.display = 'none';
+                    }
+                } else {
+                    if (serverOption) {
+                        serverOption.style.display = 'block';
+                    }
+                }
+                
+                if (printMethod === 'local' || !profile.server_printing_enabled) {
                     localRadio.checked = true;
                 } else {
                     serverRadio.checked = true;
@@ -154,6 +166,12 @@ class PrintModalManager {
         const serverRadio = document.getElementById('server_print');
         
         localRadio.checked = true;
+        
+        // Hide server option by default (until we know if it's enabled)
+        const serverOption = serverRadio?.closest('.form-check');
+        if (serverOption) {
+            serverOption.style.display = 'none';
+        }
         
         // Show print options for local printing by default
         const printOptions = document.getElementById('print-options');
@@ -241,6 +259,14 @@ class PrintModalManager {
             this.updateProgress(100, 'Print completed!');
             
             if (result.success) {
+                // Mark task as printed after successful local printing
+                try {
+                    await this.markTaskAsPrinted(this.currentTask.id);
+                } catch (markError) {
+                    console.warn('Failed to mark task as printed:', markError);
+                    // Don't fail the whole operation if marking fails
+                }
+                
                 this.showSuccess(result.message);
                 setTimeout(() => {
                     this.modal.hide();
@@ -474,6 +500,31 @@ class PrintModalManager {
         document.getElementById('cancel-print-btn').disabled = false;
         
         // Don't clear the task - we want to keep it for printing
+    }
+    
+    async markTaskAsPrinted(taskId) {
+        const response = await fetch('/tasks/mark-printed/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                task_ids: [taskId]
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Failed to mark task as printed: HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.message || 'Failed to mark task as printed');
+        }
+        
+        console.log(`✅ Marked task ${taskId} as printed`);
     }
 }
 
