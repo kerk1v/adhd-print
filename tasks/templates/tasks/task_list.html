@@ -40,7 +40,7 @@
                     <i class="fas fa-plus"></i> New Task
                 </a>
             </div>
-            <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+            <div class="card-body task-list-card-body">
                 {% if root_tasks %}
                     <div class="list-group list-group-flush">
                         {% for task in root_tasks %}
@@ -78,7 +78,7 @@
                     </a>
                 {% endif %}
             </div>
-            <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+            <div class="card-body task-list-card-body">
                 {% if level2_tasks %}
                     <div class="list-group list-group-flush">
                         {% for task in level2_tasks %}
@@ -121,7 +121,7 @@
                     </a>
                 {% endif %}
             </div>
-            <div class="card-body p-0" style="max-height: 600px; overflow-y: auto;">
+            <div class="card-body task-list-card-body">
                 {% if level3_tasks %}
                     <div class="list-group list-group-flush">
                         {% for task in level3_tasks %}
