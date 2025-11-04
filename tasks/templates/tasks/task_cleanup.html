@@ -1,0 +1,289 @@
+{% extends 'tasks/base.html' %}
+
+{% block title %}Task Cleanup - ADHD Print Task Manager{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1><i class="fas fa-broom"></i> Task Cleanup</h1>
+        <a href="{% url 'task_list' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Tasks
+        </a>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog"></i> Cleanup Settings
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="cleanupSettingsForm">
+                        <div class="mb-3">
+                            <label for="printedDays" class="form-label">
+                                Printed tasks older than (days):
+                            </label>
+                            <input type="number" class="form-control" id="printedDays" 
+                                   value="{{ printed_days }}" min="1" max="365">
+                            <div class="form-text">
+                                Remove printed tasks created more than this many days ago
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="recurringDays" class="form-label">
+                                Recurring tasks older than (days):
+                            </label>
+                            <input type="number" class="form-control" id="recurringDays" 
+                                   value="{{ recurring_days }}" min="1" max="365">
+                            <div class="form-text">
+                                Remove recurring task templates created more than this many days ago
+                            </div>
+                        </div>
+                        
+                        <button type="button" class="btn btn-primary" onclick="updatePreview()">
+                            <i class="fas fa-refresh"></i> Update Preview
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Cleanup Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Tasks to clean up:</strong> 
+                        <span id="totalSelected" class="badge bg-primary">{{ total_candidates }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            This includes main tasks and all their subtasks.
+                            Deleting a parent task will also delete all its children.
+                        </small>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-success" onclick="selectAll()">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectNone()">
+                            <i class="fas fa-square"></i> Select None
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="confirmCleanup()" 
+                                id="cleanupBtn" disabled>
+                            <i class="fas fa-trash"></i> Execute Cleanup
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list"></i> Tasks to Clean Up
+                    </h5>
+                    <small class="text-muted">
+                        {{ cleanup_candidates|length }} candidate{{ cleanup_candidates|length|pluralize }}
+                    </small>
+                </div>
+                <div class="card-body p-0">
+                    {% if cleanup_candidates %}
+                        <div class="list-group list-group-flush" style="max-height: 600px; overflow-y: auto;">
+                            {% for task in cleanup_candidates %}
+                                <div class="list-group-item">
+                                    <div class="d-flex align-items-start">
+                                        <div class="form-check me-3">
+                                            <input class="form-check-input task-checkbox" type="checkbox" 
+                                                   value="{{ task.id }}" id="task-{{ task.id }}"
+                                                   onchange="updateSelectedCount()">
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex align-items-center mb-1">
+                                                {% for i in ""|ljust:task.hierarchy_level %}
+                                                    <span class="text-muted me-1">│&nbsp;</span>
+                                                {% endfor %}
+                                                {% if task.hierarchy_level > 0 %}
+                                                    <span class="text-muted me-1">└─</span>
+                                                {% endif %}
+                                                
+                                                <strong class="me-2">{{ task.title }}</strong>
+                                                <span class="badge bg-{% if task.urgency == 'low' %}success{% elif task.urgency == 'normal' %}primary{% elif task.urgency == 'urgent' %}warning{% else %}danger{% endif %} badge-sm me-2">
+                                                    {{ task.urgency|capfirst }}
+                                                </span>
+                                                {% if task.subtask_count > 0 %}
+                                                    <span class="badge bg-secondary badge-sm">
+                                                        {{ task.subtask_count }} subtask{{ task.subtask_count|pluralize }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                            
+                                            {% if task.description %}
+                                                <p class="text-muted small mb-1">{{ task.description }}</p>
+                                            {% endif %}
+                                            
+                                            <div class="text-muted small">
+                                                <i class="fas fa-clock"></i> Created: {{ task.created_at|date:"M d, Y H:i" }}
+                                                <span class="ms-3">
+                                                    <i class="fas fa-info-circle"></i> {{ task.reason }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h4>No tasks to clean up!</h4>
+                            <p class="text-muted">
+                                Based on your current settings, there are no old tasks that need cleaning up.
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Confirmation Modal -->
+<div class="modal fade" id="confirmationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Task Cleanup
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-warning"></i>
+                    <strong>Warning:</strong> This action cannot be undone!
+                </div>
+                
+                <p>You are about to permanently delete <strong id="selectedCount">0</strong> task(s).</p>
+                
+                <p>This includes:</p>
+                <ul>
+                    <li>All selected main tasks</li>
+                    <li>All subtasks of selected main tasks (cascade deletion)</li>
+                    <li>All associated data</li>
+                </ul>
+                
+                <p>Are you sure you want to proceed?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-danger" onclick="executeCleanup()">
+                    <i class="fas fa-trash"></i> Yes, Delete Tasks
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updatePreview() {
+    const printedDays = document.getElementById('printedDays').value;
+    const recurringDays = document.getElementById('recurringDays').value;
+    
+    const url = new URL(window.location);
+    url.searchParams.set('printed_days', printedDays);
+    url.searchParams.set('recurring_days', recurringDays);
+    
+    window.location.href = url.toString();
+}
+
+function selectAll() {
+    const checkboxes = document.querySelectorAll('.task-checkbox');
+    checkboxes.forEach(cb => cb.checked = true);
+    updateSelectedCount();
+}
+
+function selectNone() {
+    const checkboxes = document.querySelectorAll('.task-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    const checkedBoxes = document.querySelectorAll('.task-checkbox:checked');
+    const count = checkedBoxes.length;
+    
+    document.getElementById('totalSelected').textContent = count;
+    document.getElementById('cleanupBtn').disabled = count === 0;
+}
+
+function confirmCleanup() {
+    const checkedBoxes = document.querySelectorAll('.task-checkbox:checked');
+    document.getElementById('selectedCount').textContent = checkedBoxes.length;
+    
+    const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+    modal.show();
+}
+
+async function executeCleanup() {
+    const checkedBoxes = document.querySelectorAll('.task-checkbox:checked');
+    const selectedTasks = Array.from(checkedBoxes).map(cb => parseInt(cb.value));
+    
+    const printedDays = document.getElementById('printedDays').value;
+    const recurringDays = document.getElementById('recurringDays').value;
+    
+    try {
+        const response = await fetch('{% url "task_cleanup" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                selected_tasks: selectedTasks,
+                printed_days: parseInt(printedDays),
+                recurring_days: parseInt(recurringDays)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Close modal and reload page
+            bootstrap.Modal.getInstance(document.getElementById('confirmationModal')).hide();
+            
+            let message = `Successfully deleted ${data.deleted_count} task(s).`;
+            if (data.errors.length > 0) {
+                message += ` ${data.errors.length} error(s) occurred.`;
+            }
+            
+            alert(message);
+            window.location.reload();
+        } else {
+            alert('An error occurred during cleanup.');
+        }
+    } catch (error) {
+        console.error('Cleanup error:', error);
+        alert('An error occurred during cleanup.');
+    }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    updateSelectedCount();
+});
+</script>
+{% csrf_token %}
+{% endblock %}

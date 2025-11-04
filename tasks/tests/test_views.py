@@ -60,8 +60,7 @@ class TaskViewTests(TestCase):
         )
         task2 = Task.objects.create(
             title='Root Task 2',
-            owner=self.user,
-            done=True
+            owner=self.user
         )
 
         response = self.client.get(reverse('task_list'))
@@ -270,44 +269,29 @@ class TaskViewTests(TestCase):
         # Task should still exist
         self.assertTrue(Task.objects.filter(id=task.id).exists())
 
-    def test_task_toggle_done_view(self):
-        """Test toggling task done status."""
-        task = Task.objects.create(title='Toggle Me', owner=self.user, done=False)
-
-        # Toggle to done - returns JSON response, not redirect
-        response = self.client.post(reverse('task_toggle_done', args=[task.id]))
+    def test_task_list_filtering(self):
+        """Test task list filtering functionality."""
+        # Create test tasks with different states
+        printed_task = Task.objects.create(
+            title='Printed Task',
+            owner=self.user,
+            is_printed=True
+        )
+        unprinted_task = Task.objects.create(
+            title='Unprinted Task', 
+            owner=self.user,
+            is_printed=False
+        )
+        
+        response = self.client.get(reverse('task_list'))
         self.assertEqual(response.status_code, 200)
-
-        # Check JSON response
-        try:
-            data = json.loads(response.content)
-            if data.get('success'):
-                task.refresh_from_db()
-                self.assertTrue(task.done)
-
-                # Toggle back to not done
-                response = self.client.post(reverse('task_toggle_done', args=[task.id]))
-                self.assertEqual(response.status_code, 200)
-
-                data = json.loads(response.content)
-                if data.get('success'):
-                    task.refresh_from_db()
-                    self.assertFalse(task.done)
-        except json.JSONDecodeError:
-            pass  # If not JSON, that's also acceptable
-
-    def test_task_toggle_done_unauthorized(self):
-        """Test that users cannot toggle tasks they don't own."""
-        task = Task.objects.create(
-            title='Other Task',
-            owner=self.other_user,
-            done=False)
-
-        response = self.client.post(reverse('task_toggle_done', args=[task.id]))
-        self.assertEqual(response.status_code, 404)
-
-        task.refresh_from_db()
-        self.assertFalse(task.done)  # Should remain unchanged
+        self.assertContains(response, 'Unprinted Task')
+        
+        # Test with show_printed parameter
+        response = self.client.get(reverse('task_list'), {'show_printed': 'true'})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Printed Task')
+        self.assertContains(response, 'Unprinted Task')
 
 
 class TaskModalViewTests(TestCase):
@@ -540,24 +524,11 @@ class TaskViewEdgeCasesTests(TestCase):
         response = self.client.get(reverse('task_delete', args=[99999]))
         self.assertEqual(response.status_code, 404)
 
-    def test_task_toggle_done_nonexistent_task(self):
-        """Test toggling done status for nonexistent task."""
-        response = self.client.post(reverse('task_toggle_done', args=[99999]))
-        self.assertEqual(response.status_code, 404)
-
     def test_task_print_nonexistent_task(self):
         """Test printing nonexistent task."""
         # Print view requires POST
         response = self.client.post(reverse('task_print', args=[99999]))
         self.assertEqual(response.status_code, 404)
-
-    def test_view_requires_post_method(self):
-        """Test views that require POST method."""
-        task = Task.objects.create(title='Test Task', owner=self.user)
-
-        # task_toggle_done should only accept POST
-        response = self.client.get(reverse('task_toggle_done', args=[task.id]))
-        self.assertEqual(response.status_code, 405)  # Method not allowed
 
     def test_task_create_periodic_as_subtask_error(self):
         """Test that periodic tasks cannot be created as subtasks."""

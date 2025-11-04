@@ -17,10 +17,6 @@ urlpatterns = [
         'tasks/delete/modal/<int:task_id>/',
         views.task_delete_modal,
         name='task_delete_modal'),
-    path(
-        'tasks/toggle/<int:task_id>/',
-        views.task_toggle_done,
-        name='task_toggle_done'),
     path('tasks/print/<int:task_id>/', views.task_print, name='task_print'),
     path('tasks/api/task/<int:task_id>/', views.task_api, name='task_api'),
     path('tasks/generate-escpos-graphics/', views.generate_escpos_graphics, name='generate_escpos_graphics'),
@@ -33,4 +29,5 @@ urlpatterns = [
     path('tasks/unprinted/', views.unprinted_tasks, name='unprinted_tasks'),
     path('tasks/unprinted/print/', views.print_unprinted_tasks, name='print_unprinted_tasks'),
     path('tasks/mark-printed/', views.mark_tasks_printed, name='mark_tasks_printed'),
+    path('tasks/cleanup/', views.task_cleanup, name='task_cleanup'),
 ]

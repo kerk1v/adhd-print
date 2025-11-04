@@ -28,7 +28,6 @@ class Task(models.Model):
     description = models.TextField(blank=True, null=True)
     urgency = models.CharField(max_length=10, choices=URGENCY_LEVELS, default='normal')
     due_date = models.DateTimeField(blank=True, null=True)
-    done = models.BooleanField(default=False)
     is_printed = models.BooleanField(default=False, 
                                    help_text="Whether this task has been printed")
     created_at = models.DateTimeField(auto_now_add=True)
@@ -92,10 +91,8 @@ class Task(models.Model):
         """Check if this task has any incomplete subtasks at any level"""
         def check_subtasks(task):
             for subtask in task.subtasks.all():
-                if not subtask.done:
-                    return True
-                if check_subtasks(subtask):
-                    return True
+                # All subtasks are considered incomplete now (no done field)
+                return True
             return False
         return check_subtasks(self)
 
@@ -115,7 +112,6 @@ class Task(models.Model):
                         description=template_subtask.description,
                         urgency=template_subtask.urgency,
                         due_date=task.due_date,  # Use parent's due date
-                        done=False,
                         owner=template_subtask.owner,
                         parent=task,  # Virtual parent
                         is_periodic=False
@@ -144,7 +140,6 @@ class Task(models.Model):
                     description=template_subtask.description,
                     urgency=template_subtask.urgency,
                     due_date=self.due_date,  # Use parent's due date
-                    done=False,
                     owner=template_subtask.owner,
                     parent=self,  # Virtual parent
                     is_periodic=False
@@ -462,7 +457,7 @@ class Task(models.Model):
         if not self.is_periodic and self.has_incomplete_subtasks():
             raise ValidationError(
                 "Cannot delete task with incomplete subtasks. "
-                "Please complete or delete all subtasks first."
+                "Please delete all subtasks first."
             )
 
         super().delete(*args, **kwargs)

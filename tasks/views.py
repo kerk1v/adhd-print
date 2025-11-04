@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.conf import settings
+from django.db.models import Q
 import time
 import json
 import base64
@@ -34,6 +35,7 @@ def task_list(request):
     # Get selected task IDs from URL parameters
     selected_level1 = request.GET.get('level1')
     selected_level2 = request.GET.get('level2')
+    show_printed = request.GET.get('show_printed', 'false').lower() == 'true'
 
     # Convert to integers for comparison
     try:
@@ -46,10 +48,17 @@ def task_list(request):
     except (ValueError, TypeError):
         selected_level2_int = None
 
+    # Base queryset - filter tasks based on show_printed preference
+    base_queryset = Task.objects.filter(owner=request.user)
+    if not show_printed:
+        # Show only unprinted tasks or recurring tasks
+        base_queryset = base_queryset.filter(
+            Q(is_printed=False) | Q(is_periodic=True)
+        )
+
     # Column 1: Root tasks (no parent)
-    root_tasks = Task.objects.filter(
-        parent__isnull=True,
-        owner=request.user
+    root_tasks = base_queryset.filter(
+        parent__isnull=True
     ).order_by('-created_at')
 
     # Add selection state to each task
@@ -67,7 +76,13 @@ def task_list(request):
         try:
             selected_level1_task = Task.objects.get(
                 id=selected_level1_int, owner=request.user, parent__isnull=True)
-            level2_tasks = selected_level1_task.subtasks.all().order_by('-created_at')
+            # Apply same filtering logic to subtasks
+            level2_queryset = selected_level1_task.subtasks.all()
+            if not show_printed:
+                level2_queryset = level2_queryset.filter(
+                    Q(is_printed=False) | Q(is_periodic=True)
+                )
+            level2_tasks = level2_queryset.order_by('-created_at')
             # Add selection state to level 2 tasks
             for task in level2_tasks:
                 task.is_selected = (
@@ -85,7 +100,13 @@ def task_list(request):
                 owner=request.user,
                 parent=selected_level1_task
             )
-            level3_tasks = selected_level2_task.subtasks.all().order_by('-created_at')
+            # Apply same filtering logic to sub-subtasks
+            level3_queryset = selected_level2_task.subtasks.all()
+            if not show_printed:
+                level3_queryset = level3_queryset.filter(
+                    Q(is_printed=False) | Q(is_periodic=True)
+                )
+            level3_tasks = level3_queryset.order_by('-created_at')
             # Level 3 tasks don't have selection highlighting
             for task in level3_tasks:
                 task.is_selected = False
@@ -106,6 +127,7 @@ def task_list(request):
         'selected_level1_int': selected_level1_int,
         'selected_level2_int': selected_level2_int,
         'upcoming_periodic': upcoming_periodic,
+        'show_printed': show_printed,
         'user': request.user
     }
     return render(request, 'tasks/task_list.html', context)
@@ -410,21 +432,6 @@ def _delete_periodic_subtask_completely(task, periodic_info):
             'success': False,
             'error': f'Error during periodic cleanup: {str(e)}'
         })
-
-
-@login_required
-@require_POST
-def task_toggle_done(request, task_id):
-    """Toggle task done status via AJAX"""
-    task = get_object_or_404(Task, id=task_id, owner=request.user)
-    task.done = not task.done
-    task.save()
-
-    return JsonResponse({
-        'success': True,
-        'done': task.done,
-        'message': f'Task "{task.title}" marked as {"complete" if task.done else "incomplete"}.'
-    })
 
 
 @login_required
@@ -734,8 +741,7 @@ def todays_tasks(request):
     todays_regular_tasks = Task.objects.filter(
         owner=request.user,
         is_periodic=False,
-        due_date__date=today,
-        done=False
+        due_date__date=today
     ).order_by('urgency', 'title')
     
     # Combine all tasks
@@ -821,11 +827,10 @@ def unprinted_tasks(request):
     - Tasks that are children of periodic instances
     """
     
-    # Get all tasks owned by the user that are not printed and not done
+    # Get all tasks owned by the user that are not printed
     all_tasks = Task.objects.filter(
         owner=request.user,
-        is_printed=False,
-        done=False
+        is_printed=False
     ).order_by('-created_at')
     
     # Filter to only include leaf tasks (tasks with no children) 
@@ -909,8 +914,7 @@ def print_unprinted_tasks(request):
         # Get all unprinted leaf tasks (excluding periodic instances)
         all_tasks = Task.objects.filter(
             owner=request.user,
-            is_printed=False,
-            done=False
+            is_printed=False
         ).order_by('-created_at')
         
         # Filter to only include leaf tasks (tasks with no children)
@@ -1199,8 +1203,7 @@ def print_todays_tasks(request):
         todays_regular_tasks = Task.objects.filter(
             owner=request.user,
             is_periodic=False,
-            due_date__date=today,
-            done=False
+            due_date__date=today
         ).order_by('urgency', 'title')
         
         # Combine all tasks
@@ -1721,3 +1724,98 @@ def user_profile_api(request):
         return JsonResponse({
             'error': f'Failed to load profile: {str(e)}'
         }, status=500)
+
+
+@login_required 
+def task_cleanup(request):
+    """Task cleanup functionality to remove old tasks"""
+    from datetime import datetime, timedelta
+    
+    if request.method == 'POST':
+        # Handle cleanup execution
+        data = json.loads(request.body)
+        printed_days = int(data.get('printed_days', 14))
+        recurring_days = int(data.get('recurring_days', 14))
+        selected_task_ids = data.get('selected_tasks', [])
+        
+        deleted_count = 0
+        errors = []
+        
+        # Delete selected tasks with cascade
+        for task_id in selected_task_ids:
+            try:
+                task = Task.objects.get(id=task_id, owner=request.user)
+                task_title = task.title
+                task.delete()  # This will cascade to subtasks
+                deleted_count += 1
+            except Task.DoesNotExist:
+                errors.append(f"Task with ID {task_id} not found")
+            except Exception as e:
+                errors.append(f"Error deleting task {task_id}: {str(e)}")
+        
+        return JsonResponse({
+            'success': True,
+            'deleted_count': deleted_count,
+            'errors': errors
+        })
+    
+    else:
+        # GET request - show cleanup preview
+        printed_days = int(request.GET.get('printed_days', 14))
+        recurring_days = int(request.GET.get('recurring_days', 14))
+        
+        cutoff_date = timezone.now() - timedelta(days=printed_days)
+        recurring_cutoff = timezone.now() - timedelta(days=recurring_days)
+        
+        # Find old printed tasks
+        old_printed_tasks = Task.objects.filter(
+            owner=request.user,
+            is_printed=True,
+            created_at__lt=cutoff_date
+        ).order_by('created_at')
+        
+        # Find old recurring task templates that haven't been used recently
+        old_recurring_tasks = Task.objects.filter(
+            owner=request.user,
+            is_periodic=True,
+            created_at__lt=recurring_cutoff
+        ).order_by('created_at')
+        
+        # Combine and prepare task list with hierarchy info
+        cleanup_candidates = []
+        
+        def add_task_with_subtasks(task, reason):
+            """Recursively add task and all its subtasks"""
+            subtask_count = task.subtasks.count() if hasattr(task, 'subtasks') else 0
+            cleanup_candidates.append({
+                'id': task.pk,
+                'title': task.title,
+                'created_at': task.created_at,
+                'hierarchy_level': task.get_level(),
+                'subtask_count': subtask_count,
+                'reason': reason,
+                'urgency': task.urgency,
+                'description': task.description[:100] + '...' if task.description and len(task.description) > 100 else task.description
+            })
+            
+            # Add subtasks
+            if hasattr(task, 'subtasks'):
+                for subtask in task.subtasks.all():
+                    add_task_with_subtasks(subtask, f"Subtask of {task.title}")
+        
+        # Add printed tasks
+        for task in old_printed_tasks:
+            add_task_with_subtasks(task, f"Printed task older than {printed_days} days")
+        
+        # Add recurring tasks
+        for task in old_recurring_tasks:
+            add_task_with_subtasks(task, f"Recurring task created more than {recurring_days} days ago")
+        
+        context = {
+            'cleanup_candidates': cleanup_candidates,
+            'printed_days': printed_days,
+            'recurring_days': recurring_days,
+            'total_candidates': len(cleanup_candidates)
+        }
+        
+        return render(request, 'tasks/task_cleanup.html', context)
