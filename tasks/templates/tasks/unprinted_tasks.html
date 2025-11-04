@@ -223,6 +223,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('Initializing unprinted tasks functionality...');
     unprintedTasksInitialized = true;
+    
+    // Load user preferences and configure server option visibility
+    loadUnprintedUserPreferences();
+    
     const confirmBtn = document.getElementById('confirmUnprintedPrintBtn');
     const progressDiv = document.getElementById('unprinted-print-progress');
     const progressText = document.getElementById('unprinted-print-progress-text');
@@ -481,6 +485,47 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (error) {
             console.warn('Failed to mark tasks as printed:', error);
+        }
+    }
+    
+    // Load user preferences and configure server printing option visibility
+    async function loadUnprintedUserPreferences() {
+        try {
+            const response = await fetch('/users/api/profile/');
+            if (response.ok) {
+                const profile = await response.json();
+                
+                // Hide server option if not enabled for user
+                const serverOption = document.getElementById('server-print-option');
+                if (!profile.server_printing_enabled) {
+                    serverOption.style.display = 'none';
+                } else {
+                    serverOption.style.display = 'block';
+                }
+                
+                // Set print method preference
+                const printMethod = profile.printing_method || 'local';
+                const localRadio = document.getElementById('unprinted_local_print');
+                const serverRadio = document.getElementById('unprinted_server_print');
+                
+                if (printMethod === 'local' || !profile.server_printing_enabled) {
+                    localRadio.checked = true;
+                } else {
+                    serverRadio.checked = true;
+                }
+                
+                // Set printer width preference
+                const printerWidth = profile.printer_settings?.width || '80mm';
+                const widthSelect = document.getElementById('unprinted-print-width');
+                if (widthSelect) {
+                    widthSelect.value = printerWidth;
+                }
+                
+            } else {
+                console.warn('Could not load user preferences for unprinted tasks, using defaults');
+            }
+        } catch (error) {
+            console.error('Error loading user preferences for unprinted tasks:', error);
         }
     }
 });
