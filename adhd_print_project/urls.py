@@ -21,6 +21,7 @@ from django.contrib.auth import views as auth_views
 # Import debug views only if they exist (development only)
 debug_print_modal = None
 auth_check_public = None
+debug_modal_view = None
 try:
     import sys
     import os
@@ -29,6 +30,7 @@ try:
     sys.path.append(project_root)
     from debug_print_view import debug_print_modal
     from auth_check_view import auth_check, auth_check_public
+    from debug_view import debug_modal_view
 except (ImportError, ModuleNotFoundError):
     # Debug modules not available in production
     pass
@@ -69,3 +71,6 @@ if debug_print_modal is not None:
     
 if auth_check_public is not None:
     urlpatterns.append(path('auth-check/', auth_check_public, name='auth_check'))
+    
+if debug_modal_view is not None:
+    urlpatterns.append(path('debug-modal/', debug_modal_view, name='debug_modal'))

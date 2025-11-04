@@ -19,6 +19,9 @@ class Task(models.Model):
         ('weekly', 'Weekly'),
         ('monthly', 'Monthly'),
         ('yearly', 'Yearly'),
+        ('every_x_days', 'Every X Days'),
+        ('every_x_weeks', 'Every X Weeks'),
+        ('every_x_months', 'Every X Months'),
     ]
 
     title = models.CharField(max_length=200)
@@ -64,14 +67,6 @@ class Task(models.Model):
         null=True,
         help_text="End date for periodic tasks (leave empty for no end)"
     )
-    periodic_parent = models.ForeignKey(
-        'self',
-        blank=True,
-        null=True,
-        on_delete=models.CASCADE,
-        related_name='periodic_instances',
-        help_text="Reference to the original periodic task template"
-    )
 
     class Meta:
         ordering = ['-created_at']
@@ -109,12 +104,76 @@ class Task(models.Model):
         all_subtasks = []
 
         def collect_subtasks(task):
-            for subtask in task.subtasks.all():
-                all_subtasks.append(subtask)
-                collect_subtasks(subtask)
+            # For virtual periodic tasks (no pk), get subtasks from template
+            if not task.pk and hasattr(task, '_template_task'):
+                # Virtual task - get subtasks from template
+                template_subtasks = task._template_task.subtasks.all()
+                for template_subtask in template_subtasks:
+                    # Create virtual subtask instances
+                    virtual_subtask = Task(
+                        title=template_subtask.title,
+                        description=template_subtask.description,
+                        urgency=template_subtask.urgency,
+                        due_date=task.due_date,  # Use parent's due date
+                        done=False,
+                        owner=template_subtask.owner,
+                        parent=task,  # Virtual parent
+                        is_periodic=False
+                    )
+                    virtual_subtask._template_task = template_subtask
+                    all_subtasks.append(virtual_subtask)
+                    collect_subtasks(virtual_subtask)
+            else:
+                # Regular task with pk - access subtasks normally
+                for subtask in task.subtasks.all():
+                    all_subtasks.append(subtask)
+                    collect_subtasks(subtask)
 
         collect_subtasks(self)
         return all_subtasks
+
+    @property
+    def subtasks_for_template(self):
+        """Get subtasks safely for template use - handles virtual instances"""
+        if not self.pk and hasattr(self, '_template_task'):
+            # Virtual task - return subtasks from template as virtual instances
+            virtual_subtasks = []
+            for template_subtask in self._template_task.subtasks.all():
+                virtual_subtask = Task(
+                    title=template_subtask.title,
+                    description=template_subtask.description,
+                    urgency=template_subtask.urgency,
+                    due_date=self.due_date,  # Use parent's due date
+                    done=False,
+                    owner=template_subtask.owner,
+                    parent=self,  # Virtual parent
+                    is_periodic=False
+                )
+                virtual_subtask._template_task = template_subtask
+                virtual_subtasks.append(virtual_subtask)
+            return virtual_subtasks
+        else:
+            # Regular task with pk - return normal subtasks
+            return self.subtasks.all() if self.pk else []
+
+    @property
+    def task_identifier(self):
+        """Get a unique identifier for this task - handles virtual instances"""
+        if self.pk:
+            # Regular task with database ID
+            return self.pk
+        elif hasattr(self, '_template_task') and hasattr(self, '_occurrence_date'):
+            # Virtual periodic instance - create identifier from template and date
+            return f"virtual_{self._template_task.pk}_{self._occurrence_date.strftime('%Y%m%d')}"
+        elif hasattr(self, '_template_task'):
+            # Virtual subtask - create identifier from template and parent
+            if hasattr(self.parent, 'task_identifier'):
+                return f"virtual_sub_{self._template_task.pk}_{self.parent.task_identifier}"
+            else:
+                return f"virtual_sub_{self._template_task.pk}"
+        else:
+            # Fallback for other virtual tasks
+            return f"virtual_{id(self)}"
 
     def get_hierarchy_path(self):
         """Get the full hierarchy path for this task"""
@@ -130,77 +189,152 @@ class Task(models.Model):
         path = self.get_hierarchy_path()
         return " → ".join([task.title for task in path])
 
-    def get_periodic_template_info(self):
+    def get_occurrences_in_range(self, start_date, end_date):
         """
-        Get information about periodic template if this task is part of a periodic hierarchy.
+        Get all occurrences of this periodic task within a date range.
         
+        Args:
+            start_date: Start date for the range (inclusive)
+            end_date: End date for the range (inclusive)
+            
         Returns:
-            dict with 'is_periodic_instance', 'template', 'instance_root', 'template_counterpart'
+            List of date objects representing occurrences
         """
-        # Check if this task is directly a periodic instance
-        if self.periodic_parent:
-            return {
-                'is_periodic_instance': True,
-                'template': self.periodic_parent,
-                'instance_root': self,
-                'template_counterpart': self.periodic_parent
-            }
+        if not self.is_periodic or not self.start_date:
+            return []
+            
+        occurrences = []
+        current_date = max(start_date, self.start_date)
         
-        # Check if this task is part of a periodic hierarchy (instance or template)
-        current = self.parent
-        while current:
-            if current.periodic_parent:
-                # Found a periodic instance root
-                template = current.periodic_parent
+        # Check if we've passed the end date
+        if self.end_date and current_date > self.end_date:
+            return []
+            
+        while current_date <= end_date:
+            # Check if we've passed the task's end date
+            if self.end_date and current_date > self.end_date:
+                break
                 
-                # Build path from instance root to this task
-                path_to_task = []
-                temp = self
-                while temp != current:
-                    path_to_task.insert(0, temp.title)
-                    temp = temp.parent
+            # Check if this date should have an occurrence
+            if self._should_occur_on_date(current_date):
+                occurrences.append(current_date)
                 
-                # Find corresponding task in template hierarchy
-                template_counterpart = template
-                for title in path_to_task:
-                    try:
-                        template_counterpart = template_counterpart.subtasks.get(title=title)
-                    except Task.DoesNotExist:
-                        template_counterpart = None
-                        break
-                
-                return {
-                    'is_periodic_instance': True,
-                    'template': template,
-                    'instance_root': current,
-                    'template_counterpart': template_counterpart
-                }
-            elif current.is_periodic:
-                # Found a periodic template - this task is a template subtask
-                template = current
-                
-                # Build path from template to this task
-                path_to_task = []
-                temp = self
-                while temp != current:
-                    path_to_task.insert(0, temp.title)
-                    temp = temp.parent
-                
-                # The template counterpart is this task itself
-                return {
-                    'is_periodic_instance': False,  # This is template, not instance
-                    'template': template,
-                    'instance_root': None,
-                    'template_counterpart': self  # Template subtask references itself
-                }
-            current = current.parent
+            # Move to next day to check
+            current_date += timezone.timedelta(days=1)
+            
+        return occurrences
+    
+    def _should_occur_on_date(self, check_date):
+        """
+        Check if this periodic task should occur on a specific date.
         
-        return {
-            'is_periodic_instance': False,
-            'template': None,
-            'instance_root': None,
-            'template_counterpart': None
-        }
+        Args:
+            check_date: Date to check
+            
+        Returns:
+            Boolean indicating if task should occur on this date
+        """
+        if not self.is_periodic or not self.start_date:
+            return False
+            
+        if check_date < self.start_date:
+            return False
+            
+        if self.end_date and check_date > self.end_date:
+            return False
+            
+        if self.periodicity_type == 'daily':
+            return True
+            
+        elif self.periodicity_type == 'weekly':
+            weekdays = self.periodicity_detail.get('weekdays', []) if self.periodicity_detail else []
+            if not weekdays:
+                # Default to the same weekday as start_date
+                weekdays = [self.start_date.weekday()]
+            return check_date.weekday() in weekdays
+            
+        elif self.periodicity_type == 'monthly':
+            return check_date.day == self.start_date.day
+            
+        elif self.periodicity_type == 'yearly':
+            return (check_date.month == self.start_date.month and 
+                   check_date.day == self.start_date.day)
+                   
+        elif self.periodicity_type == 'every_x_days':
+            interval = self.periodicity_detail.get('interval', 1) if self.periodicity_detail else 1
+            days_diff = (check_date - self.start_date).days
+            return days_diff >= 0 and days_diff % interval == 0
+            
+        elif self.periodicity_type == 'every_x_weeks':
+            interval = self.periodicity_detail.get('interval', 1) if self.periodicity_detail else 1
+            # Must be on the same weekday as start_date
+            if check_date.weekday() != self.start_date.weekday():
+                return False
+            weeks_diff = (check_date - self.start_date).days // 7
+            return weeks_diff >= 0 and weeks_diff % interval == 0
+            
+        elif self.periodicity_type == 'every_x_months':
+            interval = self.periodicity_detail.get('interval', 1) if self.periodicity_detail else 1
+            
+            # Calculate months between start_date and check_date
+            months_diff = (check_date.year - self.start_date.year) * 12 + (check_date.month - self.start_date.month)
+            
+            if months_diff < 0 or months_diff % interval != 0:
+                return False
+                
+            # Handle day matching with month-end considerations
+            target_day = self.start_date.day
+            
+            # If the target day doesn't exist in the current month, use the last day of the month
+            import calendar
+            last_day_of_month = calendar.monthrange(check_date.year, check_date.month)[1]
+            
+            if target_day > last_day_of_month:
+                # Use the last day of the month if target day doesn't exist
+                return check_date.day == last_day_of_month
+            else:
+                return check_date.day == target_day
+                   
+        return False
+    
+    def get_virtual_instance_for_date(self, occurrence_date):
+        """
+        Create a virtual task instance representing this periodic task on a specific date.
+        This doesn't create a database object, just returns a Task-like object with
+        the appropriate values for the given occurrence date.
+        
+        Args:
+            occurrence_date: Date for the virtual instance
+            
+        Returns:
+            Task object (not saved to database) representing the virtual instance
+        """
+        if not self.is_periodic:
+            return None
+            
+        # Create a virtual instance
+        virtual_instance = Task(
+            title=self.title,
+            description=self.description,
+            urgency=self.urgency,
+            due_date=timezone.datetime.combine(
+                occurrence_date,
+                timezone.datetime.min.time().replace(tzinfo=timezone.get_current_timezone())
+            ),
+            owner=self.owner,
+            parent=None,  # Virtual instances are always top-level
+            is_periodic=False,  # Virtual instances are not periodic themselves
+            created_at=self.created_at,
+            is_printed=False  # Virtual instances are never pre-printed
+        )
+        
+        # Set a special attribute to mark this as a virtual instance
+        virtual_instance._is_virtual_periodic_instance = True
+        virtual_instance._periodic_template = self
+        virtual_instance._template_task = self  # For subtask access
+        virtual_instance._occurrence_date = occurrence_date
+        
+        return virtual_instance
 
     def clean(self):
         """Custom validation"""
@@ -235,10 +369,6 @@ class Task(models.Model):
                     raise ValidationError(
                         "Weekly task weekdays must be between 0 (Monday) "
                         "and 6 (Sunday).")
-
-    def is_periodic_instance(self):
-        """Check if this task is an instance generated from a periodic task"""
-        return self.periodic_parent is not None
 
     def get_next_occurrence(self, from_date=None):
         """Calculate the next occurrence date for a periodic task"""
@@ -325,95 +455,21 @@ class Task(models.Model):
         return None
 
     def delete(self, *args, **kwargs):
-        """Override delete to handle periodic tasks and prevent deletion of regular tasks with incomplete subtasks"""
-
-        # If this is a periodic template, delete all its instances first (cascade
-        # deletion allowed)
-        if self.is_periodic:
-            # Get all future instances (including today and beyond)
-            current_date = timezone.now().date()
-            future_instances = self.periodic_instances.filter(
-                due_date__date__gte=current_date
-            ).order_by('-due_date')  # Delete in reverse order (newest first)
-
-            # Delete each instance and its subtask hierarchy
-            for instance in future_instances:
-                self._delete_task_hierarchy(instance)
+        """Override delete to prevent deletion of regular tasks with incomplete subtasks"""
 
         # For regular tasks (non-periodic), check if they have incomplete subtasks
         # This prevents accidental deletion of regular task hierarchies
-        elif not self.is_periodic and self.has_incomplete_subtasks():
+        if not self.is_periodic and self.has_incomplete_subtasks():
             raise ValidationError(
                 "Cannot delete task with incomplete subtasks. "
                 "Please complete or delete all subtasks first."
             )
 
-        # For periodic instances (tasks with periodic_parent), allow deletion
-        # without checking subtasks. This is needed when the template is being
-        # deleted and instances need to
-        # be cascaded
-
         super().delete(*args, **kwargs)
 
-    def _delete_task_hierarchy(self, task):
-        """
-        Recursively delete a task and all its subtasks, starting from the deepest level.
-        This ensures foreign key constraints are respected.
-        """
-        # Get all subtasks at all levels
-        def get_all_subtasks(parent_task):
-            """Recursively collect all subtasks in depth-first order"""
-            subtasks = []
-            for subtask in parent_task.subtasks.all():
-                subtasks.extend(get_all_subtasks(subtask))  # Get children first
-                subtasks.append(subtask)  # Then add the subtask itself
-            return subtasks
-
-        # Get all subtasks in reverse hierarchical order (deepest first)
-        all_subtasks = get_all_subtasks(task)
-
-        # Delete all subtasks first (deepest to shallowest)
-        for subtask in all_subtasks:
-            super(Task, subtask).delete()  # Use parent's delete to avoid recursion
-
-        # Finally delete the parent task
-        super(Task, task).delete()  # Use parent's delete to avoid recursion
-
     def save(self, *args, **kwargs):
-        # Check if this is a new task being created (not an update)
-        is_new_task = self.pk is None
-
         self.full_clean()
         super().save(*args, **kwargs)
-
-        # If this is a new subtask of a periodic template or its subtasks,
-        # create corresponding instances for existing periodic instances
-        if is_new_task and self.parent:
-            self._handle_new_subtask_creation()
-
-    def _handle_new_subtask_creation(self):
-        """
-        Handle creation of subtask instances when a new subtask is added to a
-        periodic template.
-        """
-        # Find if this subtask belongs to a periodic template hierarchy
-        current_task = self.parent
-        periodic_template = None
-
-        # Traverse up the hierarchy to find the periodic template
-        while current_task:
-            if current_task.is_periodic:
-                periodic_template = current_task
-                break
-            current_task = current_task.parent
-
-        # If we found a periodic template, create instances for existing
-        # periodic instances
-        if periodic_template:
-            from .periodic_utils import (
-                create_subtask_instances_for_existing_periodic_instances
-            )
-            create_subtask_instances_for_existing_periodic_instances(self)
 
 
 class MaintenanceLog(models.Model):

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Modal Form</title>
+    <style>
+        .interval-field[data-type] {
+            display: none;
+        }
+        .form-control, .form-select {
+            padding: 5px;
+            margin: 5px 0;
+        }
+        .mb-3 {
+            margin-bottom: 15px;
+        }
+        .form-label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h2>Debug: Periodic Task Form</h2>
+    
+    <div>
+        <label class="form-label">Make this a repeating task</label>
+        <input type="checkbox" id="id_is_periodic" onchange="togglePeriodicFields()">
+    </div>
+    
+    <div id="modal-periodic-fields" style="display: none;">
+        <div class="mb-3">
+            <label for="id_periodicity_type" class="form-label">Repeat Every</label>
+            <select id="id_periodicity_type" class="form-select" onchange="toggleWeekdaySelection()">
+                <option value="">Choose...</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+                <option value="every_x_days">Every X Days</option>
+                <option value="every_x_weeks">Every X Weeks</option>
+                <option value="every_x_months">Every X Months</option>
+            </select>
+        </div>
+        
+        <div class="mb-3 interval-field" data-type="every_x_days" style="display: none;">
+            <label for="id_interval_days" class="form-label">Number of Days</label>
+            <input type="number" id="id_interval_days" class="form-control" min="1" max="365" placeholder="Enter days...">
+        </div>
+        
+        <div class="mb-3 interval-field" data-type="every_x_weeks" style="display: none;">
+            <label for="id_interval_weeks" class="form-label">Number of Weeks</label>
+            <input type="number" id="id_interval_weeks" class="form-control" min="1" max="52" placeholder="Enter weeks...">
+        </div>
+        
+        <div class="mb-3 interval-field" data-type="every_x_months" style="display: none;">
+            <label for="id_interval_months" class="form-label">Number of Months</label>
+            <input type="number" id="id_interval_months" class="form-control" min="1" max="24" placeholder="Enter months...">
+        </div>
+        
+        <div id="modal-weekday-selection" style="display: none;">
+            <label class="form-label">Days of the Week</label>
+            <div>Weekday checkboxes would go here...</div>
+        </div>
+    </div>
+
+    <script>
+        function togglePeriodicFields() {
+            const isPeriodicCheckbox = document.getElementById('id_is_periodic');
+            const periodicFields = document.getElementById('modal-periodic-fields');
+            
+            console.log('togglePeriodicFields called, checked:', isPeriodicCheckbox.checked);
+            
+            if (isPeriodicCheckbox && isPeriodicCheckbox.checked) {
+                if (periodicFields) periodicFields.style.display = 'block';
+                toggleWeekdaySelection();
+            } else {
+                if (periodicFields) periodicFields.style.display = 'none';
+            }
+        }
+
+        function toggleWeekdaySelection() {
+            const periodicityType = document.getElementById('id_periodicity_type');
+            const weekdaySelection = document.getElementById('modal-weekday-selection');
+            
+            console.log('toggleWeekdaySelection called');
+            console.log('periodicityType element:', periodicityType);
+            console.log('selected value:', periodicityType ? periodicityType.value : 'not found');
+            
+            // Hide all interval fields first
+            const intervalFields = document.querySelectorAll('.interval-field[data-type]');
+            console.log('Found interval fields:', intervalFields.length);
+            intervalFields.forEach(field => {
+                field.style.display = 'none';
+            });
+            
+            if (periodicityType && weekdaySelection) {
+                const selectedType = periodicityType.value;
+                
+                if (selectedType === 'weekly') {
+                    weekdaySelection.style.display = 'block';
+                } else {
+                    weekdaySelection.style.display = 'none';
+                }
+                
+                // Show the appropriate interval field
+                if (selectedType === 'every_x_days') {
+                    const intervalDaysField = document.querySelector('.interval-field[data-type="every_x_days"]');
+                    console.log('Showing days field:', intervalDaysField);
+                    if (intervalDaysField) intervalDaysField.style.display = 'block';
+                } else if (selectedType === 'every_x_weeks') {
+                    const intervalWeeksField = document.querySelector('.interval-field[data-type="every_x_weeks"]');
+                    console.log('Showing weeks field:', intervalWeeksField);
+                    if (intervalWeeksField) intervalWeeksField.style.display = 'block';
+                } else if (selectedType === 'every_x_months') {
+                    const intervalMonthsField = document.querySelector('.interval-field[data-type="every_x_months"]');
+                    console.log('Showing months field:', intervalMonthsField);
+                    if (intervalMonthsField) intervalMonthsField.style.display = 'block';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

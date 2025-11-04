@@ -107,6 +107,34 @@
                     <div class="invalid-feedback" id="periodicity_type-error"></div>
                 </div>
                 
+                <!-- Interval fields for custom periodicities -->
+                <div class="mb-3 interval-field" data-type="every_x_days" style="display: none;">
+                    <label for="{{ form.interval_days.id_for_label }}" class="form-label">
+                        Number of Days <span class="text-danger">*</span>
+                    </label>
+                    {{ form.interval_days }}
+                    <div class="form-text">{{ form.interval_days.help_text }}</div>
+                    <div class="invalid-feedback" id="interval_days-error"></div>
+                </div>
+                
+                <div class="mb-3 interval-field" data-type="every_x_weeks" style="display: none;">
+                    <label for="{{ form.interval_weeks.id_for_label }}" class="form-label">
+                        Number of Weeks <span class="text-danger">*</span>
+                    </label>
+                    {{ form.interval_weeks }}
+                    <div class="form-text">{{ form.interval_weeks.help_text }}</div>
+                    <div class="invalid-feedback" id="interval_weeks-error"></div>
+                </div>
+                
+                <div class="mb-3 interval-field" data-type="every_x_months" style="display: none;">
+                    <label for="{{ form.interval_months.id_for_label }}" class="form-label">
+                        Number of Months <span class="text-danger">*</span>
+                    </label>
+                    {{ form.interval_months }}
+                    <div class="form-text">{{ form.interval_months.help_text }}</div>
+                    <div class="invalid-feedback" id="interval_months-error"></div>
+                </div>
+                
                 <div id="modal-weekday-selection" style="display: none;">
                     <div class="mb-3">
                         <label class="form-label">
@@ -154,9 +182,3 @@
 
 {% load static %}
 <script src="{% static 'tasks/js/task-modal-form.js' %}"></script>
-<script>
-// Set field ID variables for external JavaScript
-const modalIsPeriodicFieldId = "{{ form.is_periodic.id_for_label }}";
-const modalDueDateFieldId = "{{ form.due_date.id_for_label }}";
-const modalPeriodicityTypeFieldId = "{{ form.periodicity_type.id_for_label }}";
-</script>

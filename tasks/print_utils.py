@@ -359,13 +359,52 @@ def create_task_image(task, printer_width='80mm'):
     # Draw task title with better formatting using larger font
     title = task.title
 
+    # Check if this is a periodic task and prepare icon
+    recurring_icon_width = 0
+    if hasattr(task, 'is_periodic') and task.is_periodic:
+        # Add recurring icon before title for periodic tasks
+        recurring_icon_path = os.path.join(settings.BASE_DIR, 'static', 'icons', 'recurring.png')
+        try:
+            recurring_icon = Image.open(recurring_icon_path)
+            if recurring_icon.mode != '1':
+                recurring_icon = recurring_icon.convert('1', dither=Image.FLOYDSTEINBERG)
+            # Scale icon to match title font size (approximately)
+            icon_size = int(title_font_size * 0.8)  # Make icon 80% of font size
+            recurring_icon = recurring_icon.resize((icon_size, icon_size), Image.LANCZOS)
+            recurring_icon_width = icon_size + 10  # Icon width plus spacing
+        except Exception:
+            # Fallback: draw a simple circular arrow icon
+            icon_size = int(title_font_size * 0.8)
+            recurring_icon = Image.new('1', (icon_size, icon_size), 1)
+            icon_draw = ImageDraw.Draw(recurring_icon)
+            # Draw a simple circular arrow (redo symbol)
+            arc_margin = icon_size // 8
+            icon_draw.arc(
+                [arc_margin, arc_margin, icon_size - arc_margin, icon_size - arc_margin],
+                start=-90, end=270, fill=0, width=max(1, icon_size // 12)
+            )
+            # Add arrow head
+            arrow_size = icon_size // 6
+            arrow_x = icon_size - arc_margin - arrow_size
+            arrow_y = icon_size // 2
+            icon_draw.polygon([
+                (arrow_x, arrow_y - arrow_size//2),
+                (arrow_x + arrow_size, arrow_y),
+                (arrow_x, arrow_y + arrow_size//2)
+            ], fill=0)
+            recurring_icon_width = icon_size + 10
+
     # Use actual pixel width to determine if wrapping is needed for 52pt font
     # Leave reasonable margins (20px on each side) for 576px total width
-    max_title_width = width - 40  # 536px available width for title
+    max_title_width = width - 40 - recurring_icon_width  # Account for recurring icon
 
     # Get text dimensions for the full title
     bbox = draw.textbbox((0, 0), title, font=title_font)
     title_width = bbox[2] - bbox[0]
+
+    # Draw recurring icon if this is a periodic task
+    if recurring_icon_width > 0:
+        img.paste(recurring_icon, (margin, current_y))
 
     if title_width > max_title_width:
         # Word wrap the title based on actual pixel measurements
@@ -389,12 +428,12 @@ def create_task_image(task, printer_width='80mm'):
             lines.append(current_line.strip())
 
         for line in lines:
-            # Use title font
-            draw.text((margin, current_y), line, fill=0, font=title_font)
+            # Use title font with offset for recurring icon
+            draw.text((margin + recurring_icon_width, current_y), line, fill=0, font=title_font)
             current_y += int(title_font_size * 1.2)  # Line spacing based on title font size
     else:
-        # Use title font
-        draw.text((margin, current_y), title, fill=0, font=title_font)
+        # Use title font with offset for recurring icon
+        draw.text((margin + recurring_icon_width, current_y), title, fill=0, font=title_font)
         current_y += int(title_font_size * 1.1)  # Spacing after title based on font size
 
     # Draw separator

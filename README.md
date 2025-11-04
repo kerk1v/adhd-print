@@ -136,6 +136,7 @@ This comprehensive user guide will help you effectively use the ADHD Print Task 
    - **After Creating Tasks**: Use the auto-prompt to print immediately
    - **Project Focus**: Print all subtasks for a specific project
    - **Overwhelm Prevention**: Print just 3-5 tasks to avoid choice paralysis
+   - **Deferred printing**: Create tasks anywhere, print when you have your printer available, as unprinted tasks are registered.
 
 2. **Print Modal Workflow**
    - After creating a task, you'll see "Print this task?" prompt

@@ -5,6 +5,9 @@
                 <input type="checkbox" class="form-check-input me-2 task-checkbox" 
                        {% if task.done %}checked{% endif %}
                        onclick="event.stopPropagation(); toggleTaskDone({{ task.id }})">
+                {% if task.is_periodic %}
+                    <i class="fas fa-redo-alt text-primary me-1" title="Recurring Task" style="font-size: 0.8em;"></i>
+                {% endif %}
                 <strong class="task-title" {% if task.is_selected %}style="background-color: #e3f2fd; padding: 2px 6px; border-radius: 4px; border: 1px solid #2196f3;"{% endif %}>{{ task.title }}</strong>
                 <span class="badge bg-{% if task.urgency == 'low' %}success{% elif task.urgency == 'normal' %}primary{% elif task.urgency == 'urgent' %}warning{% else %}danger{% endif %} ms-2 badge-sm">
                     {{ task.get_urgency_display }}

@@ -5,7 +5,7 @@ Fixed to match the actual Task model structure.
 from django.test import TestCase
 from django.contrib.auth.models import User
 from django.utils import timezone
-from datetime import date
+from datetime import date, timedelta
 from tasks.models import Task
 
 
@@ -134,27 +134,28 @@ class PeriodicInstanceGenerationTests(TestCase):
             urgency='urgent'
         )
 
-        # Test that we can create an instance manually (simulating what
-        # generate_periodic_task_instances does)
-        instance = Task.objects.create(
-            title=task.title,
-            description=task.description,
-            owner=task.owner,
-            urgency=task.urgency,
-            periodic_parent=task,
-            due_date=timezone.datetime.combine(
-                date(
-                    2025,
-                    1,
-                    1),
-                timezone.datetime.min.time()).replace(
-                tzinfo=timezone.get_current_timezone()))
+        # Test dynamic generation instead of physical instances
+        # Generate virtual instances for the next few days
+        from datetime import timedelta
+        test_date = date(2025, 1, 1)
+        occurrence_dates = task.get_occurrences_in_range(
+            test_date, 
+            test_date + timedelta(days=3)
+        )
 
-        self.assertEqual(instance.title, 'Daily Backup')
-        self.assertEqual(instance.urgency, 'urgent')
-        self.assertTrue(instance.periodic_parent == task)
-        # instances should not be periodic themselves
-        self.assertFalse(instance.is_periodic)
+        # Verify the occurrence dates are generated correctly
+        self.assertEqual(len(occurrence_dates), 4)  # 4 days including start date
+        
+        # Test virtual instance generation for each occurrence
+        for i, occurrence_date in enumerate(occurrence_dates):
+            virtual_task = task.get_virtual_instance_for_date(occurrence_date)
+            self.assertIsNotNone(virtual_task)
+            self.assertEqual(virtual_task.title, task.title)
+            self.assertEqual(virtual_task.description, task.description)
+            self.assertEqual(virtual_task.owner, task.owner)
+            self.assertEqual(virtual_task.urgency, task.urgency)
+            # Virtual instances should not be periodic themselves
+            self.assertFalse(virtual_task.is_periodic)
 
 
 class BasicPeriodicTests(TestCase):

@@ -106,7 +106,7 @@ class TaskViewTests(TestCase):
         self.assertNotContains(response, 'Other Task')
 
     def test_task_list_view_excludes_periodic_instances(self):
-        """Test that periodic instances are excluded from main task list."""
+        """Test that task list shows templates correctly with dynamic approach."""
         # Create periodic template
         template = Task.objects.create(
             title='Periodic Template',
@@ -116,16 +116,19 @@ class TaskViewTests(TestCase):
             start_date=date.today()
         )
 
-        # Create periodic instance
-        instance = Task.objects.create(
-            title='Periodic Instance',
-            owner=self.user,
-            periodic_parent=template,
-            due_date=timezone.now()
-        )
+        # With dynamic approach, no physical instances are created
+        # but virtual instances can be generated when needed
+        virtual_instance = template.get_virtual_instance_for_date(date.today())
 
         response = self.client.get(reverse('task_list'))
         self.assertEqual(response.status_code, 200)
+        
+        # Template should be visible in task list
+        tasks = response.context['root_tasks']
+        self.assertIn(template, tasks)
+        
+        # Virtual instances are not directly in the list (they're generated dynamically)
+        self.assertIsNotNone(virtual_instance)
         self.assertContains(response, 'Periodic Template')
         self.assertNotContains(response, 'Periodic Instance')
 
@@ -175,11 +178,9 @@ class TaskViewTests(TestCase):
         response = self.client.get(reverse('task_create', args=[level3.id]))
         self.assertEqual(response.status_code, 302)  # Redirected with error
 
-    @patch('tasks.views.generate_periodic_task_instances')
-    def test_task_create_periodic_task(self, mock_generate):
+    def test_task_create_periodic_task(self):
         """Test creating a periodic task."""
-        mock_generate.return_value = []
-
+        # With dynamic approach, no instance generation during creation
         response = self.client.post(reverse('task_create'), {
             'title': 'Daily Standup',
             'description': 'Daily team meeting',
@@ -194,7 +195,9 @@ class TaskViewTests(TestCase):
             task = Task.objects.get(title='Daily Standup')
             self.assertTrue(task.is_periodic)
             self.assertEqual(task.periodicity_type, 'daily')
-            mock_generate.assert_called_once()
+            # Test that virtual instances can be generated
+            virtual_instance = task.get_virtual_instance_for_date(date.today())
+            self.assertIsNotNone(virtual_instance)
 
     def test_task_edit_view_get(self):
         """Test task edit form display."""
@@ -614,7 +617,7 @@ class RecentFixesTests(TestCase):
         self.assertNotIn('task', data)  # Raw task object should not be present
 
     def test_periodic_deletion_detection_enhancement(self):
-        """Test enhanced periodic deletion detection for both templates and instances."""
+        """Test enhanced periodic deletion detection for periodic templates."""
         from datetime import date
         
         # Create periodic template with subtask
@@ -631,29 +634,12 @@ class RecentFixesTests(TestCase):
             owner=self.user
         )
         
-        # Create instance with subtask
-        instance = Task.objects.create(
-            title='Instance',
-            owner=self.user,
-            periodic_parent=template
-        )
-        instance_subtask = Task.objects.create(
-            title='Template Subtask',  # Same title
-            parent=instance,
-            owner=self.user
-        )
-        
-        # Both should be detected as periodic subtasks
+        # Template subtask should be detected as periodic subtask
         template_response = self.client.get(reverse('task_delete_modal', args=[template_subtask.id]))
-        instance_response = self.client.get(reverse('task_delete_modal', args=[instance_subtask.id]))
-        
         template_data = template_response.json()
-        instance_data = instance_response.json()
         
         self.assertTrue(template_data['is_periodic_subtask'])
-        self.assertTrue(instance_data['is_periodic_subtask'])
         self.assertEqual(template_data['template_title'], 'Template')
-        self.assertEqual(instance_data['template_title'], 'Template')
 
     def test_print_modal_authentication_fix(self):
         """Test that print modal properly handles authentication."""
@@ -694,7 +680,7 @@ class RecentFixesTests(TestCase):
         self.assertIn('static/tasks/js/print-modal.js', content)
 
     def test_unified_periodic_deletion_behavior(self):
-        """Test that periodic deletion removes from template and all instances."""
+        """Test that periodic template subtask deletion works with dynamic approach."""
         from datetime import date
         
         # Create template with subtask
@@ -711,33 +697,12 @@ class RecentFixesTests(TestCase):
             owner=self.user
         )
         
-        # Create multiple instances with matching subtasks
-        instances = []
-        instance_subtasks = []
-        for i in range(3):
-            instance = Task.objects.create(
-                title=f'Instance {i}',
-                owner=self.user,
-                periodic_parent=template
-            )
-            subtask = Task.objects.create(
-                title='Common Subtask',
-                parent=instance,
-                owner=self.user
-            )
-            instances.append(instance)
-            instance_subtasks.append(subtask)
-        
-        # Delete one instance subtask
-        response = self.client.delete(reverse('task_delete_modal', args=[instance_subtasks[0].id]))
+        # Delete template subtask
+        response = self.client.delete(reverse('task_delete_modal', args=[template_subtask.id]))
         self.assertEqual(response.status_code, 200)
         
-        # Verify all related subtasks are deleted
+        # Verify template subtask is deleted
         self.assertFalse(Task.objects.filter(id=template_subtask.id).exists())
-        for subtask in instance_subtasks:
-            self.assertFalse(Task.objects.filter(id=subtask.id).exists())
         
-        # Verify parents still exist
+        # Verify template still exists
         self.assertTrue(Task.objects.filter(id=template.id).exists())
-        for instance in instances:
-            self.assertTrue(Task.objects.filter(id=instance.id).exists())

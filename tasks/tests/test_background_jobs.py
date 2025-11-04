@@ -98,15 +98,13 @@ class BackgroundJobsSimpleTests(TestCase):
             start_date=date.today()
         )
 
-        # Create an instance (what maintenance would create)
-        instance = Task.objects.create(
-            title='Template Task',
-            owner=self.user,
-            periodic_parent=template,
-            due_date=date.today()
-        )
+        # Create an instance (with dynamic approach, we test virtual instances)
+        # Since we no longer create physical instances, test the template's virtual instance generation
+        from datetime import timedelta
+        virtual_instance = template.get_virtual_instance_for_date(date.today())
 
-        # Test identification methods
-        self.assertFalse(template.is_periodic_instance())
-        self.assertTrue(instance.is_periodic_instance())
-        self.assertEqual(instance.periodic_parent, template)
+        # Test identification methods - template should be periodic
+        self.assertTrue(template.is_periodic)
+        # Virtual instance should not be periodic
+        self.assertFalse(virtual_instance.is_periodic)
+        # No more physical instances or periodic_parent relationships in dynamic approach

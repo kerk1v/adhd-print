@@ -15,11 +15,9 @@ from .models import Task, PrintLog, UserProfile
 from .forms import TaskForm, UserProfileForm
 from .print_utils import print_task, create_task_image, convert_image_to_bitmap_escp, convert_image_to_escp, get_task_hierarchy
 from .periodic_utils import (
-    generate_periodic_task_instances,
-    update_periodic_task_instances,
-    handle_periodic_task_completion,
     get_periodic_task_summary,
-    get_todays_periodic_tasks
+    get_todays_periodic_tasks,
+    get_upcoming_periodic_tasks
 )
 
 
@@ -48,11 +46,10 @@ def task_list(request):
     except (ValueError, TypeError):
         selected_level2_int = None
 
-    # Column 1: Root tasks (no parent) - exclude periodic task instances
+    # Column 1: Root tasks (no parent)
     root_tasks = Task.objects.filter(
         parent__isnull=True,
-        owner=request.user,
-        periodic_parent__isnull=True  # Exclude periodic instances from main list
+        owner=request.user
     ).order_by('-created_at')
 
     # Add selection state to each task
@@ -95,13 +92,8 @@ def task_list(request):
         except Task.DoesNotExist:
             pass
 
-    # Get upcoming periodic task instances for sidebar
-    upcoming_periodic = Task.objects.filter(
-        owner=request.user,
-        periodic_parent__isnull=False,
-        due_date__gte=timezone.now(),
-        done=False
-    ).order_by('due_date')[:5]  # Show next 5 upcoming
+    # Get upcoming periodic task virtual instances for sidebar
+    upcoming_periodic = get_upcoming_periodic_tasks(request.user, days_ahead=7)
 
     context = {
         'root_tasks': root_tasks,
@@ -156,17 +148,13 @@ def task_create(request, parent_id=None):
             try:
                 task.save()
 
-                # Generate initial instances for periodic tasks
+                # Success message for periodic vs regular tasks
                 if task.is_periodic:
-                    instances = generate_periodic_task_instances(task, days_ahead=60)
                     messages.success(
-                        request, f'Periodic task "{
-                            task.title}" created successfully! Generated {
-                            len(instances)} upcoming instances.')
+                        request, f'Periodic task "{task.title}" created successfully!')
                 else:
                     messages.success(
-                        request, f'Task "{
-                            task.title}" created successfully!')
+                        request, f'Task "{task.title}" created successfully!')
 
                 return redirect('task_list')
             except ValidationError as e:
@@ -201,25 +189,13 @@ def task_edit(request, task_id):
 
                 updated_task.save()
 
-                # Update existing instances if this is a periodic task
+                # Success message for periodic vs regular tasks
                 if updated_task.is_periodic:
-                    update_periodic_task_instances(updated_task)
-                    # Generate any missing future instances
-                    new_instances = generate_periodic_task_instances(
-                        updated_task, days_ahead=60)
-                    if new_instances:
-                        messages.success(
-                            request, f'Task "{
-                                updated_task.title}" updated successfully! Generated {
-                                len(new_instances)} new instances.')
-                    else:
-                        messages.success(
-                            request, f'Task "{
-                                updated_task.title}" updated successfully!')
+                    messages.success(
+                        request, f'Periodic task "{updated_task.title}" updated successfully!')
                 else:
                     messages.success(
-                        request, f'Task "{
-                            updated_task.title}" updated successfully!')
+                        request, f'Task "{updated_task.title}" updated successfully!')
 
                 return redirect('task_list')
             except ValidationError as e:
@@ -262,18 +238,9 @@ def task_edit_modal(request, task_id):
                 updated_task = form.save(commit=False)
                 updated_task.save()
 
-                # Update existing instances if this is a periodic task
+                # Success message for periodic vs regular tasks
                 if updated_task.is_periodic:
-                    update_periodic_task_instances(updated_task)
-                    # Generate any missing future instances
-                    new_instances = generate_periodic_task_instances(
-                        updated_task, days_ahead=60)
-                    if new_instances:
-                        message = f'Task "{
-                            updated_task.title}" updated successfully! Generated {
-                            len(new_instances)} new instances.'
-                    else:
-                        message = f'Task "{updated_task.title}" updated successfully!'
+                    message = f'Periodic task "{updated_task.title}" updated successfully!'
                 else:
                     message = f'Task "{updated_task.title}" updated successfully!'
 
@@ -324,23 +291,14 @@ def task_delete_modal(request, task_id):
     """Handle task deletion via AJAX modal"""
     task = get_object_or_404(Task, id=task_id, owner=request.user)
 
-    if request.method == 'GET':
-        # Check if this is part of a periodic task hierarchy
-        periodic_info = task.get_periodic_template_info()
-        
-        # Count how many instances would be affected
-        affected_instances = 0
-        if periodic_info['is_periodic_instance'] or (periodic_info['template'] and task.parent):
-            # This is a subtask in a periodic hierarchy
-            template = periodic_info['template']
-            if template:
-                # Count instances that have this subtask
-                instances = Task.objects.filter(periodic_parent=template)
-                for instance in instances:
-                    # Check if this instance has a matching subtask
-                    if _find_matching_subtask_in_instance(task, instance, template):
-                        affected_instances += 1
-        
+    if request.method == 'GET':        
+        # Check if this is a subtask of a periodic template
+        is_periodic_subtask = False
+        template_title = ''
+        if task.parent and task.parent.is_periodic:
+            is_periodic_subtask = True
+            template_title = task.parent.title
+
         # Return task details for confirmation modal
         return JsonResponse({
             'success': True,
@@ -348,28 +306,21 @@ def task_delete_modal(request, task_id):
             'task_description': task.description or '',
             'incomplete_subtasks': bool(task.has_incomplete_subtasks()),
             'subtask_count': int(task.subtasks.count()),
-            'is_periodic_subtask': bool(periodic_info['is_periodic_instance'] or (periodic_info['template'] and task.parent)),
-            'template_title': periodic_info['template'].title if periodic_info['template'] else '',
-            'affected_instances': int(affected_instances),
+            'is_periodic_subtask': is_periodic_subtask,
+            'template_title': template_title,
+            'affected_instances': 0,
         })
 
     elif request.method == 'DELETE':
         try:
             task_title = task.title
             
-            # Check if this is part of a periodic hierarchy
-            periodic_info = task.get_periodic_template_info()
-            
-            if periodic_info['is_periodic_instance'] or (periodic_info['template'] and task.parent):
-                # This is a periodic subtask - do comprehensive cleanup
-                return _delete_periodic_subtask_completely(task, periodic_info)
-            else:
-                # Regular task deletion
-                task.delete()
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Task "{task_title}" deleted successfully!'
-                })
+            # Regular task deletion
+            task.delete()
+            return JsonResponse({
+                'success': True,
+                'message': f'Task "{task_title}" deleted successfully!'
+            })
                 
         except ValidationError as e:
             return JsonResponse({
@@ -385,14 +336,16 @@ def task_delete_modal(request, task_id):
 
 def _find_matching_subtask_in_instance(target_task, instance, template):
     """Find a matching subtask in an instance based on the target task's hierarchy path"""
-    # If target is direct child of template/instance
-    if target_task.parent and (target_task.parent == template or target_task.parent.periodic_parent == template):
+    # With dynamic approach, this function is no longer needed for physical instances
+    # but may be used for virtual instance operations
+    # If target is direct child of template
+    if target_task.parent and target_task.parent == template:
         return instance.subtasks.filter(title=target_task.title).first()
     
     # If target is nested deeper, trace the path
     path = []
     current = target_task
-    while current.parent and current.parent != template and not (hasattr(current.parent, 'periodic_parent') and current.parent.periodic_parent == template):
+    while current.parent and current.parent != template:
         path.insert(0, current.title)
         current = current.parent
     
@@ -427,14 +380,11 @@ def _delete_periodic_subtask_completely(task, periodic_info):
                 template_counterpart.delete()
                 deleted_from_template = 1
         
-        # 2. Find and delete from all instances
+        # 2. For periodic tasks using dynamic approach, deletion affects only the template
+        # No physical instances to delete since they are generated dynamically
         if template:
-            instances = Task.objects.filter(periodic_parent=template)
-            for instance in instances:
-                matching_subtask = _find_matching_subtask_in_instance(task, instance, template)
-                if matching_subtask:
-                    matching_subtask.delete()
-                    deleted_from_instances += 1
+            # The task being deleted is already removed when it's part of the template
+            pass
         
         # 3. Delete the original task if it still exists
         if Task.objects.filter(id=task.id).exists():
@@ -469,10 +419,6 @@ def task_toggle_done(request, task_id):
     task = get_object_or_404(Task, id=task_id, owner=request.user)
     task.done = not task.done
     task.save()
-
-    # Handle periodic task completion
-    if task.done and task.periodic_parent:
-        handle_periodic_task_completion(task)
 
     return JsonResponse({
         'success': True,
@@ -518,12 +464,9 @@ def task_create_modal(request):
             try:
                 task.save()
 
-                # Generate initial instances for periodic tasks
+                # Success message for periodic vs regular tasks
                 if task.is_periodic:
-                    instances = generate_periodic_task_instances(task, days_ahead=60)
-                    message = f'Periodic task "{
-                        task.title}" created successfully! Generated {
-                        len(instances)} upcoming instances.'
+                    message = f'Periodic task "{task.title}" created successfully!'
                 else:
                     message = f'Task "{task.title}" created successfully!'
 
@@ -661,7 +604,7 @@ def task_print(request, task_id):
                 'urgency': task.urgency,
                 'due_date': task.due_date.isoformat() if task.due_date else None,
                 'level': task.get_level() if hasattr(task, 'get_level') else 0,
-                'created_at': task.created_at.isoformat() if hasattr(task, 'created_at') else None,
+                'created_at': task.created_at.isoformat() if hasattr(task, 'created_at') and task.created_at else None,
                 'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
             }
             
@@ -772,7 +715,7 @@ def task_api(request, task_id):
         'urgency': task.urgency,
         'due_date': task.due_date.isoformat() if task.due_date else None,
         'level': task.get_level() if hasattr(task, 'get_level') else 0,
-        'created_at': task.created_at.isoformat() if hasattr(task, 'created_at') else None,
+        'created_at': task.created_at.isoformat() if hasattr(task, 'created_at') and task.created_at else None,
         'hierarchy': hierarchy,
     }
     
@@ -781,15 +724,34 @@ def task_api(request, task_id):
 
 @login_required
 def todays_tasks(request):
-    """Display and optionally print today's recurring tasks"""
+    """Display and optionally print today's recurring tasks and regular tasks due today"""
 
     # Get today's periodic task instances
-    todays_tasks = get_todays_periodic_tasks(request.user)
+    todays_periodic_tasks = get_todays_periodic_tasks(request.user)
+    
+    # Get regular (non-periodic) tasks due today
+    today = timezone.now().date()
+    todays_regular_tasks = Task.objects.filter(
+        owner=request.user,
+        is_periodic=False,
+        due_date__date=today,
+        done=False
+    ).order_by('urgency', 'title')
+    
+    # Combine all tasks
+    all_todays_tasks = list(todays_periodic_tasks) + list(todays_regular_tasks)
 
-    # Group tasks by their periodic parent to show hierarchy
+    # Group tasks by their template for periodic tasks, individual for regular tasks
     task_groups = {}
-    for task in todays_tasks:
-        parent = task.periodic_parent
+    for task in all_todays_tasks:
+        # For periodic tasks, group by template; for regular tasks, each is its own group
+        if hasattr(task, '_template_task'):
+            # Periodic virtual task - group by template
+            parent = task._template_task
+        else:
+            # Regular task - each task is its own group
+            parent = task
+            
         if parent not in task_groups:
             task_groups[parent] = {
                 'parent': parent,
@@ -798,7 +760,7 @@ def todays_tasks(request):
             }
         task_groups[parent]['instances'].append(task)
 
-        # Get all subtasks of this periodic instance
+        # Get all subtasks of this task
         subtasks = task.get_all_subtasks()
         task_groups[parent]['all_subtasks'].extend(subtasks)
 
@@ -813,23 +775,29 @@ def todays_tasks(request):
         if processed_ids is None:
             processed_ids = set()
             
-        # Avoid processing the same task multiple times
-        if task.id in processed_ids:
-            return 0
-        processed_ids.add(task.id)
+        # For virtual tasks, use title as identifier since they don't have IDs
+        task_identifier = task.id if task.pk else f"virtual_{task.title}_{task.due_date}"
         
-        if not task.subtasks.exists():
+        # Avoid processing the same task multiple times
+        if task_identifier in processed_ids:
+            return 0
+        processed_ids.add(task_identifier)
+        
+        # Get subtasks using our updated method that handles virtual instances
+        all_subtasks = task.get_all_subtasks()
+        
+        if not all_subtasks:
             # This task has no children, it's a leaf
             return 1
         else:
             # This task has children, count leaves in children
             leaf_count = 0
-            for subtask in task.subtasks.all():
+            for subtask in all_subtasks:
                 leaf_count += count_leaf_tasks(subtask, processed_ids)
             return leaf_count
     
     total_printouts = 0
-    for task in todays_tasks:
+    for task in all_todays_tasks:
         total_printouts += count_leaf_tasks(task)
 
     context = {
@@ -871,17 +839,8 @@ def unprinted_tasks(request):
     
     def is_periodic_instance_or_descendant(task):
         """Check if task is a periodic instance or descendant of one"""
-        # Check if task itself is a periodic instance
-        if task.is_periodic_instance():
-            return True
-            
-        # Check if any ancestor is a periodic instance
-        current = task.parent
-        while current:
-            if current.is_periodic_instance():
-                return True
-            current = current.parent
-            
+        # With the new dynamic approach, there are no physical periodic instances
+        # All tasks are either periodic templates or regular tasks/subtasks
         return False
     
     for task in all_tasks:
@@ -965,17 +924,8 @@ def print_unprinted_tasks(request):
         
         def is_periodic_instance_or_descendant(task):
             """Check if task is a periodic instance or descendant of one"""
-            # Check if task itself is a periodic instance
-            if task.is_periodic_instance():
-                return True
-                
-            # Check if any ancestor is a periodic instance
-            current = task.parent
-            while current:
-                if current.is_periodic_instance():
-                    return True
-                current = current.parent
-                
+            # With the new dynamic approach, there are no physical periodic instances
+            # All tasks are either periodic templates or regular tasks/subtasks
             return False
         
         for task in all_tasks:
@@ -1060,13 +1010,13 @@ def print_unprinted_tasks(request):
                 hierarchy.reverse()  # Root to leaf order
                 
                 task_data = {
-                    'id': leaf_task.id,
+                    'id': getattr(leaf_task, 'task_identifier', leaf_task.id),
                     'title': leaf_task.title,
                     'description': leaf_task.description if leaf_task.description else '',
                     'urgency': leaf_task.urgency,
                     'due_date': leaf_task.due_date.isoformat() if leaf_task.due_date else None,
                     'level': leaf_task.get_level() if hasattr(leaf_task, 'get_level') else 0,
-                    'created_at': leaf_task.created_at.isoformat() if hasattr(leaf_task, 'created_at') else None,
+                    'created_at': leaf_task.created_at.isoformat() if hasattr(leaf_task, 'created_at') and leaf_task.created_at else None,
                     'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
                 }
                 leaf_tasks_data.append(task_data)
@@ -1242,9 +1192,21 @@ def print_todays_tasks(request):
             effective_method = request_data.get('print_method', 'server')  # Default fallback
         
         # Get today's periodic task instances
-        todays_tasks = get_todays_periodic_tasks(request.user)
+        todays_periodic_tasks = get_todays_periodic_tasks(request.user)
+        
+        # Get regular (non-periodic) tasks due today
+        today = timezone.now().date()
+        todays_regular_tasks = Task.objects.filter(
+            owner=request.user,
+            is_periodic=False,
+            due_date__date=today,
+            done=False
+        ).order_by('urgency', 'title')
+        
+        # Combine all tasks
+        todays_tasks = list(todays_periodic_tasks) + list(todays_regular_tasks)
 
-        if not todays_tasks.exists():
+        if not todays_tasks:
             # Create log entry for empty result
             PrintLog.objects.create(
                 user=request.user,
@@ -1253,14 +1215,14 @@ def print_todays_tasks(request):
                 success=True,
                 tasks_attempted=0,
                 tasks_successful=0,
-                error_message='No recurring tasks due today',
+                error_message='No tasks due today',
                 duration_ms=int((time.time() - start_time) * 1000),
                 print_settings={'today_date': timezone.now().date().isoformat()}
             )
             
             return JsonResponse({
                 'success': True,
-                'message': 'No recurring tasks due today',
+                'message': 'No tasks due today',
                 'print_method': 'server'
             })
 
@@ -1270,17 +1232,23 @@ def print_todays_tasks(request):
 
         def collect_leaf_tasks(task):
             """Recursively collect tasks that have no children (leaf tasks)"""
+            # For virtual tasks, use title as identifier since they don't have IDs
+            task_identifier = task.id if task.pk else f"virtual_{task.title}_{task.due_date}"
+            
             # Avoid processing the same task multiple times
-            if task.id in processed_ids:
+            if task_identifier in processed_ids:
                 return
-            processed_ids.add(task.id)
+            processed_ids.add(task_identifier)
 
-            if not task.subtasks.exists():
+            # Get subtasks using our updated method that handles virtual instances
+            all_subtasks = task.get_all_subtasks()
+            
+            if not all_subtasks:
                 # This task has no children, it's a leaf
                 leaf_tasks.append(task)
             else:
                 # This task has children, recurse into them
-                for subtask in task.subtasks.all():
+                for subtask in all_subtasks:
                     collect_leaf_tasks(subtask)
 
         # Collect leaf tasks from all today's tasks
@@ -1290,7 +1258,7 @@ def print_todays_tasks(request):
         # Create print log entry (skip if in test environment with mocks)
         print_log = None
         try:
-            parent_count = todays_tasks.count()
+            parent_count = len(todays_tasks)
         except (AttributeError, TypeError):
             parent_count = 0  # Handle mock objects in tests
             
@@ -1349,13 +1317,13 @@ def print_todays_tasks(request):
                 hierarchy.reverse()  # Root to leaf order
                 
                 task_data = {
-                    'id': leaf_task.id,
+                    'id': getattr(leaf_task, 'task_identifier', leaf_task.id),
                     'title': leaf_task.title,
                     'description': leaf_task.description if leaf_task.description else '',
                     'urgency': leaf_task.urgency,
                     'due_date': leaf_task.due_date.isoformat() if leaf_task.due_date else None,
                     'level': leaf_task.get_level() if hasattr(leaf_task, 'get_level') else 0,
-                    'created_at': leaf_task.created_at.isoformat() if hasattr(leaf_task, 'created_at') else None,
+                    'created_at': leaf_task.created_at.isoformat() if hasattr(leaf_task, 'created_at') and leaf_task.created_at else None,
                     'hierarchy': hierarchy,  # Array of title strings for ESC/POS compatibility
                 }
                 leaf_tasks_data.append(task_data)
