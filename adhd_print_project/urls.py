@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
+from django.conf.urls.i18n import i18n_patterns
 
 # Import debug views only if they exist (development only)
 debug_print_modal = None
@@ -49,6 +50,10 @@ class CustomLoginView(auth_views.LoginView):
 
 
 urlpatterns = [
+    path('i18n/', include('django.conf.urls.i18n')),
+]
+
+urlpatterns += i18n_patterns(
     path(
         'admin/login/',
         CustomLoginView.as_view(
@@ -63,7 +68,7 @@ urlpatterns = [
     path(
         '',
         include('tasks.urls')),
-]
+)
 
 # Add debug URLs only if debug views are available (development only)
 if debug_print_modal is not None:

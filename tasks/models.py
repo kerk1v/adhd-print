@@ -590,6 +590,13 @@ class UserProfile(models.Model):
         ('server', 'Server-based Printing'),
         ('local', 'Local Printing (USB/Serial)'),
     ]
+    
+    LANGUAGE_CHOICES = [
+        ('en', 'English'),
+        ('es', 'Español'),
+        ('de', 'Deutsch'),
+        ('fr', 'Français'),
+    ]
 
     user = models.OneToOneField(
         User,
@@ -610,6 +617,12 @@ class UserProfile(models.Model):
     server_printing_enabled = models.BooleanField(
         default=False,
         help_text="Whether server-based printing is available for this user"
+    )
+    language = models.CharField(
+        max_length=10,
+        choices=LANGUAGE_CHOICES,
+        default='en',
+        help_text="Preferred language for UI and emails"
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

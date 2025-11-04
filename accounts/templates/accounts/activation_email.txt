@@ -1,44 +1,44 @@
-Welcome to ADHD Print Task Manager!
+{% load i18n %}{% trans "Welcome to ADHD Print Task Manager!" %}
 
-Hi {{ user.first_name }} {{ user.last_name }},
+{% blocktrans with first_name=user.first_name last_name=user.last_name %}Hi {{ first_name }} {{ last_name }},{% endblocktrans %}
 
-Thank you for registering with ADHD Print Task Manager! To complete your registration and activate your account, please click the link below:
+{% trans "Thank you for registering with ADHD Print Task Manager! To complete your registration and activate your account, please click the link below:" %}
 
 {{ activation_url }}
 
-This activation link will expire in {{ expiry_days }} days.
+{% blocktrans with days=expiry_days %}This activation link will expire in {{ days }} days.{% endblocktrans %}
 
-If you didn't create this account, you can safely ignore this email.
+{% trans "If you didn't create this account, you can safely ignore this email." %}
 
-What's Next?
+{% trans "What's Next?" %}
 ============
 
-Once your account is activated, you'll be able to:
+{% trans "Once your account is activated, you'll be able to:" %}
 
-✓ Create and organize tasks with unlimited nesting (up to 3 levels)
-✓ Set priority levels and due dates
-✓ Print physical task reminders using thermal printers
-✓ Set up recurring tasks to build routines
-✓ Access ADHD-friendly features designed to support executive function
+{% trans "✓ Create and organize tasks with unlimited nesting (up to 3 levels)" %}
+{% trans "✓ Set priority levels and due dates" %}
+{% trans "✓ Print physical task reminders using thermal printers" %}
+{% trans "✓ Set up recurring tasks to build routines" %}
+{% trans "✓ Access ADHD-friendly features designed to support executive function" %}
 
-Getting Started Tips:
+{% trans "Getting Started Tips:" %}
 ====================
 
-1. Start with a few simple tasks to get familiar with the interface
-2. Consider getting a thermal receipt printer for physical task reminders
-3. Use the priority levels to focus on what matters most
-4. Break large projects into smaller, manageable subtasks
-5. Set up daily or weekly recurring tasks for routine building
+{% trans "1. Start with a few simple tasks to get familiar with the interface" %}
+{% trans "2. Consider getting a thermal receipt printer for physical task reminders" %}
+{% trans "3. Use the priority levels to focus on what matters most" %}
+{% trans "4. Break large projects into smaller, manageable subtasks" %}
+{% trans "5. Set up daily or weekly recurring tasks for routine building" %}
 
-Need Help?
+{% trans "Need Help?" %}
 ==========
 
-If you have any questions or need assistance, please don't hesitate to reach out.
+{% trans "If you have any questions or need assistance, please don't hesitate to reach out." %}
 
-Welcome to the community!
+{% trans "Welcome to the community!" %}
 
-The ADHD Print Task Manager Team
+{% trans "The ADHD Print Task Manager Team" %}
 
 ---
-This email was sent to {{ user.email }} because you registered for an account at {{ site_name }}.
-If you didn't request this, you can safely ignore this email.
+{% blocktrans with email=user.email site=site_name %}This email was sent to {{ email }} because you registered for an account at {{ site }}.{% endblocktrans %}
+{% trans "If you didn't request this, you can safely ignore this email." %}

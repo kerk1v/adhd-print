@@ -6,7 +6,7 @@ from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.conf import settings
-from django.utils import timezone
+from django.utils import timezone, translation
 from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.cache import never_cache
 from django.http import Http404
@@ -29,8 +29,14 @@ def get_client_ip(request):
 
 
 def send_activation_email(user, request):
-    """Send activation email to the user"""
+    """Send activation email to the user in their preferred language"""
     try:
+        # Get user's preferred language
+        user_language = getattr(user.profile, 'language', 'en') if hasattr(user, 'profile') else 'en'
+        
+        # Activate the user's language for email templates
+        translation.activate(user_language)
+        
         # Create or get activation token
         token, created = UserActivationToken.objects.get_or_create(
             user=user,
@@ -55,8 +61,9 @@ def send_activation_email(user, request):
             'expiry_days': settings.ACCOUNT_ACTIVATION_DAYS,
         }
         
-        # Render email content
-        subject = 'Activate your ADHD Print Task Manager account'
+        # Render email content with translations
+        from django.utils.translation import gettext as _
+        subject = _('Activate your ADHD Print Task Manager account')
         message = render_to_string('accounts/activation_email.txt', context)
         html_message = render_to_string('accounts/activation_email.html', context)
         
@@ -70,11 +77,15 @@ def send_activation_email(user, request):
             fail_silently=False
         )
         
-        logger.info(f"Activation email sent to {user.email}")
+        # Deactivate the user's language
+        translation.deactivate()
+        
+        logger.info(f"Activation email sent to {user.email} in {user_language}")
         return True
         
     except Exception as e:
         logger.error(f"Failed to send activation email to {user.email}: {str(e)}")
+        translation.deactivate()
         return False
 
 
@@ -90,6 +101,12 @@ def register(request):
         if form.is_valid():
             # Save the user (inactive)
             user = form.save()
+            
+            # Set user's language preference based on current session language
+            current_language = translation.get_language()
+            if hasattr(user, 'profile'):
+                user.profile.language = current_language
+                user.profile.save()
             
             # Track registration attempt
             registration_attempt = UserRegistrationAttempt.objects.create(

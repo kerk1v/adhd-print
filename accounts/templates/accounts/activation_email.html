@@ -1,9 +1,10 @@
 <!DOCTYPE html>
+{% load i18n %}
 <html>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Activate Your ADHD Print Account</title>
+    <title>{% trans "Activate Your ADHD Print Account" %}</title>
     <style>
         body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
         .header { background: #007bff; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
@@ -19,66 +20,66 @@
 </head>
 <body>
     <div class="header">
-        <h1>🧠 Welcome to ADHD Print Task Manager!</h1>
-        <p>Activate your account to get started</p>
+        <h1>🧠 {% trans "Welcome to ADHD Print Task Manager!" %}</h1>
+        <p>{% trans "Activate your account to get started" %}</p>
     </div>
     
     <div class="content">
-        <h2>Hi {{ user.first_name }} {{ user.last_name }}!</h2>
+        <h2>{% blocktrans with first_name=user.first_name last_name=user.last_name %}Hi {{ first_name }} {{ last_name }}!{% endblocktrans %}</h2>
         
-        <p>Thank you for registering with ADHD Print Task Manager! You're about to join a community of people using thermal printing and smart task organization to support their ADHD and executive function needs.</p>
+        <p>{% trans "Thank you for registering with ADHD Print Task Manager! You're about to join a community of people using thermal printing and smart task organization to support their ADHD and executive function needs." %}</p>
         
-        <p><strong>To complete your registration and activate your account, click the button below:</strong></p>
+        <p><strong>{% trans "To complete your registration and activate your account, click the button below:" %}</strong></p>
         
         <div style="text-align: center;">
-            <a href="{{ activation_url }}" class="button">🔓 Activate My Account</a>
+            <a href="{{ activation_url }}" class="button">🔓 {% trans "Activate My Account" %}</a>
         </div>
         
         <div class="warning">
-            ⏰ <strong>Important:</strong> This activation link will expire in {{ expiry_days }} days. If it expires, you can always request a new one.
+            ⏰ <strong>{% trans "Important:" %}</strong> {% blocktrans with days=expiry_days %}This activation link will expire in {{ days }} days. If it expires, you can always request a new one.{% endblocktrans %}
         </div>
         
         <div class="features">
-            <h3>🎯 What You Can Do Once Activated:</h3>
+            <h3>🎯 {% trans "What You Can Do Once Activated:" %}</h3>
             
             <div class="feature-item">
-                <span class="icon">📋</span> <strong>Organize Tasks:</strong> Create unlimited nested tasks (up to 3 levels) with priority levels and due dates
+                <span class="icon">📋</span> <strong>{% trans "Organize Tasks:" %}</strong> {% trans "Create unlimited nested tasks (up to 3 levels) with priority levels and due dates" %}
             </div>
             
             <div class="feature-item">
-                <span class="icon">🖨️</span> <strong>Print Physical Reminders:</strong> Use thermal printers to create physical task cards that support ADHD executive function
+                <span class="icon">🖨️</span> <strong>{% trans "Print Physical Reminders:" %}</strong> {% trans "Use thermal printers to create physical task cards that support ADHD executive function" %}
             </div>
             
             <div class="feature-item">
-                <span class="icon">🔄</span> <strong>Build Routines:</strong> Set up recurring tasks (daily, weekly, monthly) to create structure and reduce planning overhead
+                <span class="icon">🔄</span> <strong>{% trans "Build Routines:" %}</strong> {% trans "Set up recurring tasks (daily, weekly, monthly) to create structure and reduce planning overhead" %}
             </div>
             
             <div class="feature-item">
-                <span class="icon">🧠</span> <strong>ADHD-Friendly Design:</strong> Features specifically designed to reduce overwhelm and support neurodivergent minds
+                <span class="icon">🧠</span> <strong>{% trans "ADHD-Friendly Design:" %}</strong> {% trans "Features specifically designed to reduce overwhelm and support neurodivergent minds" %}
             </div>
         </div>
         
-        <h3>🚀 Getting Started Tips:</h3>
+        <h3>🚀 {% trans "Getting Started Tips:" %}</h3>
         <ul>
-            <li>Start with a few simple tasks to get familiar with the interface</li>
-            <li>Consider getting a thermal receipt printer for physical task reminders (game-changer!)</li>
-            <li>Use priority levels to focus on what matters most each day</li>
-            <li>Break overwhelming projects into smaller, manageable subtasks</li>
-            <li>Set up recurring tasks for medication, planning sessions, or other routines</li>
+            <li>{% trans "Start with a few simple tasks to get familiar with the interface" %}</li>
+            <li>{% trans "Consider getting a thermal receipt printer for physical task reminders (game-changer!)" %}</li>
+            <li>{% trans "Use priority levels to focus on what matters most each day" %}</li>
+            <li>{% trans "Break overwhelming projects into smaller, manageable subtasks" %}</li>
+            <li>{% trans "Set up recurring tasks for medication, planning sessions, or other routines" %}</li>
         </ul>
         
-        <p>If you didn't create this account, you can safely ignore this email.</p>
+        <p>{% trans "If you didn't create this account, you can safely ignore this email." %}</p>
         
         <div style="text-align: center; margin-top: 30px;">
-            <p><strong>Ready to take control of your tasks?</strong></p>
-            <a href="{{ activation_url }}" class="button">🔓 Activate My Account Now</a>
+            <p><strong>{% trans "Ready to take control of your tasks?" %}</strong></p>
+            <a href="{{ activation_url }}" class="button">🔓 {% trans "Activate My Account Now" %}</a>
         </div>
     </div>
     
     <div class="footer">
-        <p>This email was sent to {{ user.email }} because you registered for an account at {{ site_name }}.</p>
-        <p>If you didn't request this, you can safely ignore this email.</p>
-        <p>Need help? Contact us or visit our documentation.</p>
+        <p>{% blocktrans with email=user.email site=site_name %}This email was sent to {{ email }} because you registered for an account at {{ site }}.{% endblocktrans %}</p>
+        <p>{% trans "If you didn't request this, you can safely ignore this email." %}</p>
+        <p>{% trans "Need help? Contact us or visit our documentation." %}</p>
     </div>
 </body>
 </html>

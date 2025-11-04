@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+{% load i18n %}
+{% load static %}
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}ADHD Print Task Manager{% endblock %}</title>
+    <title>{% block title %}{% trans "ADHD Print Task Manager" %}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    {% load static %}
     <link href="{% static 'tasks/css/task-management.css' %}" rel="stylesheet">
 </head>
 <body>
@@ -15,42 +16,67 @@
             <a class="navbar-brand" href="{% url 'task_list' %}">
                 <i class="fas fa-brain"></i> ADHD Print
             </a>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="{% url 'task_list' %}">
-                <i class="fas fa-brain"></i> ADHD Print
-            </a>
             
             {% if user.is_authenticated %}
                 <div class="d-flex align-items-center ms-auto">
-                    <span class="navbar-text me-3 d-none d-md-block">Welcome, {{ user.username }}</span>
+                    <span class="navbar-text me-3 d-none d-md-block">{% trans "Welcome" %}, {{ user.username }}</span>
+                    
+                    <!-- Language Selector -->
+                    <div class="dropdown me-3">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" 
+                                id="langDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-globe"></i> 
+                            {% if LANGUAGE_CODE == 'en' %}English
+                            {% elif LANGUAGE_CODE == 'es' %}Español
+                            {% elif LANGUAGE_CODE == 'de' %}Deutsch
+                            {% elif LANGUAGE_CODE == 'fr' %}Français
+                            {% endif %}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="langDropdown">
+                            {% get_current_language as LANGUAGE_CODE %}
+                            {% get_available_languages as LANGUAGES %}
+                            {% get_language_info_list for LANGUAGES as languages %}
+                            {% for language in languages %}
+                                <li>
+                                    <form action="{% url 'set_language' %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input name="next" type="hidden" value="{{ request.get_full_path }}" />
+                                        <input name="language" type="hidden" value="{{ language.code }}" />
+                                        <button type="submit" class="dropdown-item {% if language.code == LANGUAGE_CODE %}active{% endif %}">
+                                            {{ language.name_local }}
+                                        </button>
+                                    </form>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                     
                     <!-- Burger Menu -->
                     <div class="dropdown me-3">
                         <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" 
                                 id="navDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-bars"></i> Menu
+                            <i class="fas fa-bars"></i> {% trans "Menu" %}
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navDropdown">
                             <li><a class="dropdown-item" href="{% url 'task_list' %}">
-                                <i class="fas fa-list me-2"></i>My Tasks
+                                <i class="fas fa-list me-2"></i>{% trans "My Tasks" %}
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'todays_tasks' %}">
-                                <i class="fas fa-calendar-day me-2"></i>Today's Tasks
+                                <i class="fas fa-calendar-day me-2"></i>{% trans "Today's Tasks" %}
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'unprinted_tasks' %}">
-                                <i class="fas fa-print me-2"></i>Unprinted Tasks
+                                <i class="fas fa-print me-2"></i>{% trans "Unprinted Tasks" %}
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'task_cleanup' %}">
-                                <i class="fas fa-broom me-2"></i>Cleanup
+                                <i class="fas fa-broom me-2"></i>{% trans "Cleanup" %}
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{% url 'user_profile' %}">
-                                <i class="fas fa-user-cog me-2"></i>Profile
+                                <i class="fas fa-user-cog me-2"></i>{% trans "Profile" %}
                             </a></li>
                             {% if user.is_staff %}
                                 <li><a class="dropdown-item" href="/admin/">
-                                    <i class="fas fa-cog me-2"></i>Admin
+                                    <i class="fas fa-cog me-2"></i>{% trans "Admin" %}
                                 </a></li>
                             {% endif %}
                         </ul>
@@ -60,22 +86,53 @@
                     <form method="post" action="{% url 'accounts:logout' %}" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-light btn-sm">
-                            <i class="fas fa-sign-out-alt me-1"></i>Logout
+                            <i class="fas fa-sign-out-alt me-1"></i>{% trans "Logout" %}
                         </button>
                     </form>
                 </div>
             {% else %}
-                <div class="navbar-nav ms-auto">
-                    <a class="nav-link" href="{% url 'accounts:login' %}">
-                        <i class="fas fa-sign-in-alt me-1"></i>Login
-                    </a>
-                    <a class="nav-link" href="{% url 'accounts:register' %}">
-                        <i class="fas fa-user-plus me-1"></i>Register
-                    </a>
+                <div class="d-flex align-items-center ms-auto">
+                    <!-- Language Selector for non-authenticated users -->
+                    <div class="dropdown me-3">
+                        <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" 
+                                id="langDropdownPublic" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-globe"></i> 
+                            {% if LANGUAGE_CODE == 'en' %}English
+                            {% elif LANGUAGE_CODE == 'es' %}Español
+                            {% elif LANGUAGE_CODE == 'de' %}Deutsch
+                            {% elif LANGUAGE_CODE == 'fr' %}Français
+                            {% endif %}
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="langDropdownPublic">
+                            {% get_current_language as LANGUAGE_CODE %}
+                            {% get_available_languages as LANGUAGES %}
+                            {% get_language_info_list for LANGUAGES as languages %}
+                            {% for language in languages %}
+                                <li>
+                                    <form action="{% url 'set_language' %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <input name="next" type="hidden" value="{{ request.get_full_path }}" />
+                                        <input name="language" type="hidden" value="{{ language.code }}" />
+                                        <button type="submit" class="dropdown-item {% if language.code == LANGUAGE_CODE %}active{% endif %}">
+                                            {{ language.name_local }}
+                                        </button>
+                                    </form>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <div class="navbar-nav">
+                        <a class="nav-link" href="{% url 'accounts:login' %}">
+                            <i class="fas fa-sign-in-alt me-1"></i>{% trans "Login" %}
+                        </a>
+                        <a class="nav-link" href="{% url 'accounts:register' %}">
+                            <i class="fas fa-user-plus me-1"></i>{% trans "Register" %}
+                        </a>
+                    </div>
                 </div>
             {% endif %}
         </div>
-    </nav>
     </nav>
 
     <div class="container mt-4">
@@ -94,7 +151,6 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    {% load static %}
     <script src="{% static 'tasks/js/common.js' %}"></script>
     <script src="{% static 'tasks/js/local-printing-support.js' %}"></script>
     <script src="{% static 'tasks/js/local-printer-communication.js' %}"></script>

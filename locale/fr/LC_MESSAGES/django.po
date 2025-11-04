@@ -1,0 +1,695 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-11-04 14:46+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: accounts/templates/accounts/activation_email.html:7
+#, fuzzy
+#| msgid "Sign in to your ADHD Print account"
+msgid "Activate Your ADHD Print Account"
+msgstr "Connectez-vous à votre compte ADHD Print"
+
+#: accounts/templates/accounts/activation_email.html:23
+#: accounts/templates/accounts/activation_email.txt:1
+#, fuzzy
+#| msgid "Welcome - ADHD Print Task Manager"
+msgid "Welcome to ADHD Print Task Manager!"
+msgstr "Bienvenue - Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/activation_email.html:24
+msgid "Activate your account to get started"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:28
+#, python-format
+msgid "Hi %(first_name)s %(last_name)s!"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:30
+msgid ""
+"Thank you for registering with ADHD Print Task Manager! You're about to join "
+"a community of people using thermal printing and smart task organization to "
+"support their ADHD and executive function needs."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:32
+msgid ""
+"To complete your registration and activate your account, click the button "
+"below:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:35
+#, fuzzy
+#| msgid "Create My Account"
+msgid "Activate My Account"
+msgstr "Créer Mon Compte"
+
+#: accounts/templates/accounts/activation_email.html:39
+#: accounts/templates/accounts/password_reset_email.html:34
+msgid "Important:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:39
+#, python-format
+msgid ""
+"This activation link will expire in %(days)s days. If it expires, you can "
+"always request a new one."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:43
+msgid "What You Can Do Once Activated:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:46
+#, fuzzy
+#| msgid "Unprinted Tasks"
+msgid "Organize Tasks:"
+msgstr "Tâches Non Imprimées"
+
+#: accounts/templates/accounts/activation_email.html:46
+msgid ""
+"Create unlimited nested tasks (up to 3 levels) with priority levels and due "
+"dates"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:50
+#, fuzzy
+#| msgid "Thermal printing for physical task reminders"
+msgid "Print Physical Reminders:"
+msgstr "Impression thermique pour des rappels physiques de tâches"
+
+#: accounts/templates/accounts/activation_email.html:50
+#, fuzzy
+#| msgid "Print physical task reminders to support ADHD executive function"
+msgid ""
+"Use thermal printers to create physical task cards that support ADHD "
+"executive function"
+msgstr ""
+"Imprimez des rappels physiques de tâches pour soutenir la fonction exécutive "
+"TDAH"
+
+#: accounts/templates/accounts/activation_email.html:54
+msgid "Build Routines:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:54
+msgid ""
+"Set up recurring tasks (daily, weekly, monthly) to create structure and "
+"reduce planning overhead"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:58
+#, fuzzy
+#| msgid "ADHD-Friendly Registration:"
+msgid "ADHD-Friendly Design:"
+msgstr "Inscription Adaptée au TDAH :"
+
+#: accounts/templates/accounts/activation_email.html:58
+msgid ""
+"Features specifically designed to reduce overwhelm and support "
+"neurodivergent minds"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:62
+#: accounts/templates/accounts/activation_email.txt:24
+msgid "Getting Started Tips:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:64
+msgid "Start with a few simple tasks to get familiar with the interface"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:65
+#, fuzzy
+#| msgid "Thermal printing for physical task reminders"
+msgid ""
+"Consider getting a thermal receipt printer for physical task reminders (game-"
+"changer!)"
+msgstr "Impression thermique pour des rappels physiques de tâches"
+
+#: accounts/templates/accounts/activation_email.html:66
+msgid "Use priority levels to focus on what matters most each day"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:67
+msgid "Break overwhelming projects into smaller, manageable subtasks"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:68
+msgid ""
+"Set up recurring tasks for medication, planning sessions, or other routines"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:71
+#: accounts/templates/accounts/activation_email.txt:11
+msgid "If you didn't create this account, you can safely ignore this email."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:74
+msgid "Ready to take control of your tasks?"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:75
+#, fuzzy
+#| msgid "Create My Account"
+msgid "Activate My Account Now"
+msgstr "Créer Mon Compte"
+
+#: accounts/templates/accounts/activation_email.html:80
+#: accounts/templates/accounts/activation_email.txt:43
+#, python-format
+msgid ""
+"This email was sent to %(email)s because you registered for an account at "
+"%(site)s."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:81
+#: accounts/templates/accounts/activation_email.txt:44
+#: accounts/templates/accounts/password_reset_email.html:49
+msgid "If you didn't request this, you can safely ignore this email."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.html:82
+msgid "Need help? Contact us or visit our documentation."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:3
+#, python-format
+msgid "Hi %(first_name)s %(last_name)s,"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:5
+msgid ""
+"Thank you for registering with ADHD Print Task Manager! To complete your "
+"registration and activate your account, please click the link below:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:9
+#, python-format
+msgid "This activation link will expire in %(days)s days."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:13
+msgid "What's Next?"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:16
+msgid "Once your account is activated, you'll be able to:"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:18
+#, fuzzy
+#| msgid ""
+#| "Organize your personal tasks with unlimited nesting and priority levels"
+msgid "✓ Create and organize tasks with unlimited nesting (up to 3 levels)"
+msgstr ""
+"Organisez vos tâches personnelles avec une imbrication illimitée et des "
+"niveaux de priorité"
+
+#: accounts/templates/accounts/activation_email.txt:19
+msgid "✓ Set priority levels and due dates"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:20
+#, fuzzy
+#| msgid "Print physical task reminders to support ADHD executive function"
+msgid "✓ Print physical task reminders using thermal printers"
+msgstr ""
+"Imprimez des rappels physiques de tâches pour soutenir la fonction exécutive "
+"TDAH"
+
+#: accounts/templates/accounts/activation_email.txt:21
+msgid "✓ Set up recurring tasks to build routines"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:22
+#, fuzzy
+#| msgid "Print physical task reminders to support ADHD executive function"
+msgid "✓ Access ADHD-friendly features designed to support executive function"
+msgstr ""
+"Imprimez des rappels physiques de tâches pour soutenir la fonction exécutive "
+"TDAH"
+
+#: accounts/templates/accounts/activation_email.txt:27
+msgid "1. Start with a few simple tasks to get familiar with the interface"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:28
+#, fuzzy
+#| msgid "Thermal printing for physical task reminders"
+msgid ""
+"2. Consider getting a thermal receipt printer for physical task reminders"
+msgstr "Impression thermique pour des rappels physiques de tâches"
+
+#: accounts/templates/accounts/activation_email.txt:29
+msgid "3. Use the priority levels to focus on what matters most"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:30
+msgid "4. Break large projects into smaller, manageable subtasks"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:31
+#, fuzzy
+#| msgid "Periodic/recurring tasks for routine building"
+msgid "5. Set up daily or weekly recurring tasks for routine building"
+msgstr "Tâches périodiques/récurrentes pour créer des routines"
+
+#: accounts/templates/accounts/activation_email.txt:33
+msgid "Need Help?"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:36
+msgid ""
+"If you have any questions or need assistance, please don't hesitate to reach "
+"out."
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:38
+msgid "Welcome to the community!"
+msgstr ""
+
+#: accounts/templates/accounts/activation_email.txt:40
+#, fuzzy
+#| msgid "ADHD Print Task Manager"
+msgid "The ADHD Print Task Manager Team"
+msgstr "Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/login.html:4
+msgid "Login - ADHD Print Task Manager"
+msgstr "Connexion - Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/login.html:11
+msgid "Welcome Back"
+msgstr "Bon Retour"
+
+#: accounts/templates/accounts/login.html:12
+msgid "Sign in to your ADHD Print account"
+msgstr "Connectez-vous à votre compte ADHD Print"
+
+#: accounts/templates/accounts/login.html:27
+#: accounts/templates/accounts/register.html:27
+msgid "Username"
+msgstr "Nom d'utilisateur"
+
+#: accounts/templates/accounts/login.html:38
+#: accounts/templates/accounts/register.html:83
+msgid "Password"
+msgstr "Mot de passe"
+
+#: accounts/templates/accounts/login.html:49
+msgid "Sign In"
+msgstr "Se Connecter"
+
+#: accounts/templates/accounts/login.html:58
+msgid "Forgot your password?"
+msgstr "Mot de passe oublié ?"
+
+#: accounts/templates/accounts/login.html:62
+msgid "Don't have an account?"
+msgstr "Vous n'avez pas de compte ?"
+
+#: accounts/templates/accounts/login.html:64
+msgid "Create Account"
+msgstr "Créer un Compte"
+
+#: accounts/templates/accounts/login.html:70
+msgid "Account not activated?"
+msgstr "Compte non activé ?"
+
+#: accounts/templates/accounts/login.html:72
+msgid "Resend activation email"
+msgstr "Renvoyer l'email d'activation"
+
+#: accounts/templates/accounts/login.html:85
+msgid "Designed for ADHD and Neurodivergent Minds"
+msgstr "Conçu pour les Esprits TDAH et Neurodivergents"
+
+#: accounts/templates/accounts/login.html:87
+msgid ""
+"This task manager creates physical task reminders through thermal printing, "
+"helping reduce decision fatigue and providing the external structure that "
+"supports executive function."
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:6
+#, fuzzy
+#| msgid "Register - ADHD Print Task Manager"
+msgid "Password Reset - ADHD Print Task Manager"
+msgstr "S'inscrire - Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/password_reset_email.html:18
+msgid "Password Reset Request"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:19
+#: tasks/templates/tasks/base.html:8 tasks/templates/tasks/welcome.html:12
+msgid "ADHD Print Task Manager"
+msgstr "Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/password_reset_email.html:23
+#, python-format
+msgid "Hi %(name)s!"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:25
+msgid ""
+"You requested a password reset for your ADHD Print Task Manager account."
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:27
+msgid "Click the button below to reset your password:"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:30
+#, fuzzy
+#| msgid "Password"
+msgid "Reset My Password"
+msgstr "Mot de passe"
+
+#: accounts/templates/accounts/password_reset_email.html:34
+msgid ""
+"This password reset link will expire in a few hours for security reasons."
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:37
+msgid ""
+"If you didn't request this password reset, you can safely ignore this email."
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:37
+msgid "Your password will remain unchanged."
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:39
+msgid "For security reasons, we recommend:"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:41
+msgid "Choose a strong, unique password"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:42
+msgid "Don't reuse passwords from other sites"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:43
+msgid "Consider using a password manager"
+msgstr ""
+
+#: accounts/templates/accounts/password_reset_email.html:48
+#, python-format
+msgid ""
+"This email was sent to %(email)s because a password reset was requested."
+msgstr ""
+
+#: accounts/templates/accounts/register.html:4
+msgid "Register - ADHD Print Task Manager"
+msgstr "S'inscrire - Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/register.html:11
+msgid "Create Your Account"
+msgstr "Créez Votre Compte"
+
+#: accounts/templates/accounts/register.html:12
+msgid "Join the ADHD Print Task Manager community"
+msgstr "Rejoignez la communauté du Gestionnaire de Tâches ADHD Print"
+
+#: accounts/templates/accounts/register.html:41
+msgid "Email Address"
+msgstr "Adresse Email"
+
+#: accounts/templates/accounts/register.html:55
+msgid "First Name"
+msgstr "Prénom"
+
+#: accounts/templates/accounts/register.html:69
+msgid "Last Name"
+msgstr "Nom"
+
+#: accounts/templates/accounts/register.html:97
+msgid "Confirm Password"
+msgstr "Confirmer le Mot de Passe"
+
+#: accounts/templates/accounts/register.html:113
+msgid "I accept the"
+msgstr "J'accepte les"
+
+#: accounts/templates/accounts/register.html:115
+msgid "Terms of Use and Privacy Policy"
+msgstr "Conditions d'Utilisation et Politique de Confidentialité"
+
+#: accounts/templates/accounts/register.html:124
+msgid ""
+"Please read our Terms of Use and Privacy Policy. We're committed to "
+"protecting your privacy and being transparent about how we handle your data."
+msgstr ""
+
+#: accounts/templates/accounts/register.html:131
+msgid "ADHD-Friendly Registration:"
+msgstr "Inscription Adaptée au TDAH :"
+
+#: accounts/templates/accounts/register.html:131
+msgid ""
+"We'll send you an email confirmation link. No need to remember complex "
+"activation codes - just click the link when you're ready!"
+msgstr ""
+
+#: accounts/templates/accounts/register.html:137
+msgid "Create My Account"
+msgstr "Créer Mon Compte"
+
+#: accounts/templates/accounts/register.html:143
+msgid "Already have an account?"
+msgstr "Vous avez déjà un compte ?"
+
+#: accounts/templates/accounts/register.html:145
+msgid "Login Instead"
+msgstr "Se Connecter"
+
+#: accounts/templates/accounts/register.html:157
+msgid "Why Create an Account?"
+msgstr "Pourquoi Créer un Compte ?"
+
+#: accounts/templates/accounts/register.html:161
+msgid "Organize your personal tasks with unlimited nesting and priority levels"
+msgstr "Organisez vos tâches personnelles avec une imbrication illimitée et des niveaux de priorité"
+"Organisez vos tâches personnelles avec une imbrication illimitée et des "
+"niveaux de priorité"
+
+#: accounts/templates/accounts/register.html:165
+msgid "Print physical task reminders to support ADHD executive function"
+msgstr "Imprimez des rappels physiques de tâches pour soutenir la fonction exécutive TDAH"
+"Imprimez des rappels physiques de tâches pour soutenir la fonction exécutive "
+"TDAH"
+
+#: accounts/templates/accounts/register.html:169
+msgid ""
+"Set up recurring tasks to build routines and reduce daily planning overhead"
+msgstr ""
+
+#: accounts/views.py:66
+#, fuzzy
+#| msgid "Join the ADHD Print Task Manager community"
+msgid "Activate your ADHD Print Task Manager account"
+msgstr "Rejoignez la communauté du Gestionnaire de Tâches ADHD Print"
+
+#: tasks/templates/tasks/base.html:22
+msgid "Welcome"
+msgstr "Bienvenue"
+
+#: tasks/templates/tasks/base.html:58
+msgid "Menu"
+msgstr "Menu"
+
+#: tasks/templates/tasks/base.html:62
+msgid "My Tasks"
+msgstr "Mes Tâches"
+
+#: tasks/templates/tasks/base.html:65
+msgid "Today's Tasks"
+msgstr "Tâches d'Aujourd'hui"
+
+#: tasks/templates/tasks/base.html:68
+msgid "Unprinted Tasks"
+msgstr "Tâches Non Imprimées"
+
+#: tasks/templates/tasks/base.html:71
+msgid "Cleanup"
+msgstr "Nettoyage"
+
+#: tasks/templates/tasks/base.html:75
+msgid "Profile"
+msgstr "Profil"
+
+#: tasks/templates/tasks/base.html:79
+msgid "Admin"
+msgstr "Administrateur"
+
+#: tasks/templates/tasks/base.html:89
+msgid "Logout"
+msgstr "Déconnexion"
+
+#: tasks/templates/tasks/base.html:127 tasks/templates/tasks/welcome.html:44
+msgid "Login"
+msgstr "Connexion"
+
+#: tasks/templates/tasks/base.html:130
+msgid "Register"
+msgstr "S'inscrire"
+
+#: tasks/templates/tasks/welcome.html:4
+msgid "Welcome - ADHD Print Task Manager"
+msgstr "Bienvenue - Gestionnaire de Tâches ADHD Print"
+
+#: tasks/templates/tasks/welcome.html:15
+msgid ""
+"A specialized task management system designed for people with ADHD and "
+"similar neurodivergencies, featuring thermal printing for physical task "
+"reminders."
+msgstr ""
+
+#: tasks/templates/tasks/welcome.html:19
+msgid "ADHD-Focused Features:"
+msgstr "Fonctionnalités Axées sur le TDAH :"
+
+#: tasks/templates/tasks/welcome.html:24
+msgid "Thermal printing for physical task reminders"
+msgstr "Impression thermique pour des rappels physiques de tâches"
+
+#: tasks/templates/tasks/welcome.html:25
+msgid "3-level nested subtasks for breaking down overwhelming projects"
+msgstr "Sous-tâches imbriquées sur 3 niveaux pour décomposer les projets écrasants"
+"Sous-tâches imbriquées sur 3 niveaux pour décomposer les projets écrasants"
+
+#: tasks/templates/tasks/welcome.html:26
+msgid "Priority levels (Low, Normal, Urgent, Critical)"
+msgstr "Niveaux de priorité (Bas, Normal, Urgent, Critique)"
+
+#: tasks/templates/tasks/welcome.html:27
+msgid "Due dates with overdue indicators"
+msgstr "Dates d'échéance avec indicateurs de retard"
+
+#: tasks/templates/tasks/welcome.html:32
+msgid "Periodic/recurring tasks for routine building"
+msgstr "Tâches périodiques/récurrentes pour créer des routines"
+
+#: tasks/templates/tasks/welcome.html:33
+msgid "Designed specifically for ADHD executive function support"
+msgstr "Conçu spécifiquement pour soutenir la fonction exécutive TDAH"
+
+#: tasks/templates/tasks/welcome.html:34
+msgid "Physical task cards reduce digital overwhelm"
+msgstr "Les cartes de tâches physiques réduisent la surcharge numérique"
+
+#: tasks/templates/tasks/welcome.html:35
+msgid "Completion rituals for dopamine rewards"
+msgstr "Rituels d'achèvement pour les récompenses dopaminergiques"
+
+#: tasks/templates/tasks/welcome.html:41
+msgid "Create Free Account"
+msgstr "Créer un Compte Gratuit"
+
+#: tasks/templates/tasks/welcome.html:48
+msgid "View My Tasks"
+msgstr "Voir Mes Tâches"
+
+#: tasks/templates/tasks/welcome.html:60
+msgid "Credits"
+msgstr "Crédits"
+
+#: tasks/templates/tasks/welcome.html:65
+msgid "Research & Inspiration"
+msgstr "Recherche et Inspiration"
+
+#: tasks/templates/tasks/welcome.html:70
+msgid "A Thermal Receipt Printer Cured My Procrastination"
+msgstr "Une Imprimante Thermique a Guéri Ma Procrastination"
+
+#: tasks/templates/tasks/welcome.html:72
+msgid "The foundational research that inspired this project"
+msgstr "La recherche fondamentale qui a inspiré ce projet"
+
+#: tasks/templates/tasks/welcome.html:77
+msgid "Hacker News Discussion"
+msgstr "Discussion Hacker News"
+
+#: tasks/templates/tasks/welcome.html:79
+msgid "Community insights and experiences with thermal printing"
+msgstr "Perspectives communautaires et expériences avec l'impression thermique"
+
+#: tasks/templates/tasks/welcome.html:84
+msgid "Trying to Stop Procrastination with My Receipt Printer"
+msgstr "Tentative d'Arrêter la Procrastination avec Mon Imprimante de Reçus"
+
+#: tasks/templates/tasks/welcome.html:86
+msgid "Practical implementation experiences"
+msgstr "Expériences de mise en œuvre pratique"
+
+#: tasks/templates/tasks/welcome.html:91
+msgid "Can a Thermal Printer Cure ADHD?"
+msgstr "Une Imprimante Thermique Peut-elle Guérir le TDAH ?"
+
+#: tasks/templates/tasks/welcome.html:93
+msgid "Technical analysis of thermal printing for ADHD management"
+msgstr "Analyse technique de l'impression thermique pour la gestion du TDAH"
+
+#: tasks/templates/tasks/welcome.html:98
+msgid "Colonnes - Digital Minimalism"
+msgstr "Colonnes - Minimalisme Numérique"
+
+#: tasks/templates/tasks/welcome.html:100
+msgid "Philosophy of intentional technology use"
+msgstr "Philosophie de l'utilisation intentionnelle de la technologie"
+
+#: tasks/templates/tasks/welcome.html:105
+msgid "Technical Resources"
+msgstr "Ressources Techniques"
+
+#: tasks/templates/tasks/welcome.html:112
+msgid "Python library for receipt printer integration"
+msgstr "Bibliothèque Python pour l'intégration d'imprimante de reçus"
+
+#: tasks/templates/tasks/welcome.html:117
+msgid "Receipt Printer Agent Demo"
+msgstr "Démo de l'Agent d'Imprimante de Reçus"
+
+#: tasks/templates/tasks/welcome.html:119
+msgid "Video demonstration of thermal printing automation"
+msgstr "Démonstration vidéo de l'automatisation de l'impression thermique"
+
+#: tasks/templates/tasks/welcome.html:123
+msgid "Why This Works for ADHD"
+msgstr "Pourquoi Cela Fonctionne pour le TDAH"
+
+#: tasks/templates/tasks/welcome.html:126
+msgid ""
+"Physical task reminders create stronger psychological commitment than "
+"digital notifications"
+msgstr ""
+
+#: tasks/templates/tasks/welcome.html:127
+msgid "The thermal printing process provides immediate dopamine feedback"
+msgstr "Le processus d'impression thermique fournit un retour dopaminergique immédiat"
+"Le processus d'impression thermique fournit un retour dopaminergique immédiat"
+
+#: tasks/templates/tasks/welcome.html:128
+msgid ""
+"Physical task cards reduce decision fatigue and support executive function "
+"through external structure"
+msgstr ""

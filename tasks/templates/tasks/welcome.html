@@ -1,6 +1,7 @@
 {% extends 'tasks/base.html' %}
+{% load i18n %}
 
-{% block title %}Welcome - ADHD Print Task Manager{% endblock %}
+{% block title %}{% trans "Welcome - ADHD Print Task Manager" %}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -8,43 +9,43 @@
         <div class="jumbotron bg-light p-5 rounded">
             <h1 class="display-4">
                 <i class="fas fa-brain text-primary"></i> 
-                ADHD Print Task Manager
+                {% trans "ADHD Print Task Manager" %}
             </h1>
             <p class="lead">
-                A specialized task management system designed for people with ADHD and similar neurodivergencies, featuring thermal printing for physical task reminders.
+                {% trans "A specialized task management system designed for people with ADHD and similar neurodivergencies, featuring thermal printing for physical task reminders." %}
             </p>
             <hr class="my-4">
             <p>
-                <strong>ADHD-Focused Features:</strong>
+                <strong>{% trans "ADHD-Focused Features:" %}</strong>
             </p>
             <div class="row">
                 <div class="col-md-6">
                     <ul class="list-unstyled text-left">
-                        <li><i class="fas fa-print text-primary"></i> Thermal printing for physical task reminders</li>
-                        <li><i class="fas fa-sitemap text-success"></i> 3-level nested subtasks for breaking down overwhelming projects</li>
-                        <li><i class="fas fa-exclamation-triangle text-warning"></i> Priority levels (Low, Normal, Urgent, Critical)</li>
-                        <li><i class="fas fa-calendar-alt text-info"></i> Due dates with overdue indicators</li>
+                        <li><i class="fas fa-print text-primary"></i> {% trans "Thermal printing for physical task reminders" %}</li>
+                        <li><i class="fas fa-sitemap text-success"></i> {% trans "3-level nested subtasks for breaking down overwhelming projects" %}</li>
+                        <li><i class="fas fa-exclamation-triangle text-warning"></i> {% trans "Priority levels (Low, Normal, Urgent, Critical)" %}</li>
+                        <li><i class="fas fa-calendar-alt text-info"></i> {% trans "Due dates with overdue indicators" %}</li>
                     </ul>
                 </div>
                 <div class="col-md-6">
                     <ul class="list-unstyled text-left">
-                        <li><i class="fas fa-redo text-primary"></i> Periodic/recurring tasks for routine building</li>
-                        <li><i class="fas fa-brain text-success"></i> Designed specifically for ADHD executive function support</li>
-                        <li><i class="fas fa-hand-paper text-warning"></i> Physical task cards reduce digital overwhelm</li>
-                        <li><i class="fas fa-trophy text-info"></i> Completion rituals for dopamine rewards</li>
+                        <li><i class="fas fa-redo text-primary"></i> {% trans "Periodic/recurring tasks for routine building" %}</li>
+                        <li><i class="fas fa-brain text-success"></i> {% trans "Designed specifically for ADHD executive function support" %}</li>
+                        <li><i class="fas fa-hand-paper text-warning"></i> {% trans "Physical task cards reduce digital overwhelm" %}</li>
+                        <li><i class="fas fa-trophy text-info"></i> {% trans "Completion rituals for dopamine rewards" %}</li>
                     </ul>
                 </div>
             </div>
             {% if not user.is_authenticated %}
                 <a class="btn btn-primary btn-lg me-3" href="{% url 'accounts:register' %}" role="button">
-                    <i class="fas fa-user-plus"></i> Create Free Account
+                    <i class="fas fa-user-plus"></i> {% trans "Create Free Account" %}
                 </a>
                 <a class="btn btn-outline-primary btn-lg" href="{% url 'accounts:login' %}" role="button">
-                    <i class="fas fa-sign-in-alt"></i> Login
+                    <i class="fas fa-sign-in-alt"></i> {% trans "Login" %}
                 </a>
             {% else %}
                 <a class="btn btn-primary btn-lg" href="{% url 'task_list' %}" role="button">
-                    <i class="fas fa-list"></i> View My Tasks
+                    <i class="fas fa-list"></i> {% trans "View My Tasks" %}
                 </a>
             {% endif %}
         </div>
@@ -56,75 +57,75 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header text-center bg-secondary text-white">
-                <h3><i class="fas fa-heart text-danger"></i> Credits</h3>
+                <h3><i class="fas fa-heart text-danger"></i> {% trans "Credits" %}</h3>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
-                        <h5><i class="fas fa-microscope text-primary"></i> Research & Inspiration</h5>
+                        <h5><i class="fas fa-microscope text-primary"></i> {% trans "Research & Inspiration" %}</h5>
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <i class="fas fa-external-link-alt text-muted"></i>
                                 <a href="https://www.laurieherault.com/articles/a-thermal-receipt-printer-cured-my-procrastination" target="_blank" class="text-decoration-none">
-                                    A Thermal Receipt Printer Cured My Procrastination
+                                    {% trans "A Thermal Receipt Printer Cured My Procrastination" %}
                                 </a>
-                                <small class="text-muted d-block">The foundational research that inspired this project</small>
+                                <small class="text-muted d-block">{% trans "The foundational research that inspired this project" %}</small>
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-external-link-alt text-muted"></i>
                                 <a href="https://news.ycombinator.com/item?id=44256499" target="_blank" class="text-decoration-none">
-                                    Hacker News Discussion
+                                    {% trans "Hacker News Discussion" %}
                                 </a>
-                                <small class="text-muted d-block">Community insights and experiences with thermal printing</small>
+                                <small class="text-muted d-block">{% trans "Community insights and experiences with thermal printing" %}</small>
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-external-link-alt text-muted"></i>
                                 <a href="https://joeldare.com/trying-to-stop-procrastination-with-my-receipt-printer" target="_blank" class="text-decoration-none">
-                                    Trying to Stop Procrastination with My Receipt Printer
+                                    {% trans "Trying to Stop Procrastination with My Receipt Printer" %}
                                 </a>
-                                <small class="text-muted d-block">Practical implementation experiences</small>
+                                <small class="text-muted d-block">{% trans "Practical implementation experiences" %}</small>
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-external-link-alt text-muted"></i>
                                 <a href="https://hackaday.com/2025/08/06/can-a-thermal-printer-cure-adhd/" target="_blank" class="text-decoration-none">
-                                    Can a Thermal Printer Cure ADHD?
+                                    {% trans "Can a Thermal Printer Cure ADHD?" %}
                                 </a>
-                                <small class="text-muted d-block">Technical analysis of thermal printing for ADHD management</small>
+                                <small class="text-muted d-block">{% trans "Technical analysis of thermal printing for ADHD management" %}</small>
                             </li>
                             <li class="mb-2">
                                 <i class="fas fa-external-link-alt text-muted"></i>
                                 <a href="https://www.colonnes.com/" target="_blank" class="text-decoration-none">
-                                    Colonnes - Digital Minimalism
+                                    {% trans "Colonnes - Digital Minimalism" %}
                                 </a>
-                                <small class="text-muted d-block">Philosophy of intentional technology use</small>
+                                <small class="text-muted d-block">{% trans "Philosophy of intentional technology use" %}</small>
                             </li>
                         </ul>
                     </div>
                     <div class="col-md-6">
-                        <h5><i class="fas fa-code text-success"></i> Technical Resources</h5>
+                        <h5><i class="fas fa-code text-success"></i> {% trans "Technical Resources" %}</h5>
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <i class="fab fa-github text-muted"></i>
                                 <a href="https://github.com/CodingWithLewis/ReceiptPrinterAgent" target="_blank" class="text-decoration-none">
                                     CodingWithLewis/ReceiptPrinterAgent
                                 </a>
-                                <small class="text-muted d-block">Python library for receipt printer integration</small>
+                                <small class="text-muted d-block">{% trans "Python library for receipt printer integration" %}</small>
                             </li>
                             <li class="mb-2">
                                 <i class="fab fa-youtube text-muted"></i>
                                 <a href="https://www.youtube.com/watch?v=xg45b8UXoZI" target="_blank" class="text-decoration-none">
-                                    Receipt Printer Agent Demo
+                                    {% trans "Receipt Printer Agent Demo" %}
                                 </a>
-                                <small class="text-muted d-block">Video demonstration of thermal printing automation</small>
+                                <small class="text-muted d-block">{% trans "Video demonstration of thermal printing automation" %}</small>
                             </li>
                         </ul>
                         
-                        <h5 class="mt-4"><i class="fas fa-lightbulb text-warning"></i> Why This Works for ADHD</h5>
+                        <h5 class="mt-4"><i class="fas fa-lightbulb text-warning"></i> {% trans "Why This Works for ADHD" %}</h5>
                         <div class="text-center">
                             <ul class="list-unstyled small text-muted">
-                                <li class="mb-2"><i class="fas fa-hand-paper text-primary"></i> Physical task reminders create stronger psychological commitment than digital notifications</li>
-                                <li class="mb-2"><i class="fas fa-zap text-warning"></i> The thermal printing process provides immediate dopamine feedback</li>
-                                <li class="mb-2"><i class="fas fa-brain text-success"></i> Physical task cards reduce decision fatigue and support executive function through external structure</li>
+                                <li class="mb-2"><i class="fas fa-hand-paper text-primary"></i> {% trans "Physical task reminders create stronger psychological commitment than digital notifications" %}</li>
+                                <li class="mb-2"><i class="fas fa-zap text-warning"></i> {% trans "The thermal printing process provides immediate dopamine feedback" %}</li>
+                                <li class="mb-2"><i class="fas fa-brain text-success"></i> {% trans "Physical task cards reduce decision fatigue and support executive function through external structure" %}</li>
                             </ul>
                         </div>
                     </div>
